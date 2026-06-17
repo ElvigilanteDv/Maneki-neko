@@ -9,6 +9,28 @@ module.exports = {
     const apiBase  = String(settings.apiBaseUrl || '').trim();
     const apiKey   = String(settings.apiKey || '').trim();
 
+    const firstArg = args[0];
+    const isNumberChoice = /^([1-9]|10)$/.test(firstArg || '');
+
+    if (isNumberChoice) {
+      const index = parseInt(firstArg, 10) - 1;
+      const cache = global.playSearchCache;
+      const cached = cache?.get(from);
+
+      if (!cached) {
+        await client.sendMessage(from, { text: '❌ No hay una búsqueda activa.\n> Usa .play <nombre> primero' }, { quoted: m });
+        return;
+      }
+
+      if (!cached.results[index]) {
+        await client.sendMessage(from, { text: `❌ No existe el resultado #${firstArg}.` }, { quoted: m });
+        return;
+      }
+
+      await descargarYEnviar(client, m, from, cached.results[index], apiBase, apiKey, axios);
+      return;
+    }
+
     const query = args.join(' ').trim();
 
     if (!query) {
@@ -21,6 +43,20 @@ module.exports = {
       return;
     }
 
+    if (query.toLowerCase() === 'aleatorio' || query.toLowerCase() === 'random') {
+      const cache = global.playSearchCache;
+      const cached = cache?.get(from);
+
+      if (!cached) {
+        await client.sendMessage(from, { text: '❌ No hay una búsqueda activa.\n> Usa .play <nombre> primero' }, { quoted: m });
+        return;
+      }
+
+      const randomIndex = Math.floor(Math.random() * cached.results.length);
+      await descargarYEnviar(client, m, from, cached.results[randomIndex], apiBase, apiKey, axios);
+      return;
+    }
+
     let results = [];
 
     try {
@@ -28,7 +64,7 @@ module.exports = {
         params: { apiKey, query },
         timeout: 15000,
       });
-      results = Array.isArray(data?.data) ? data.data.slice(0, 8) : [];
+      results = Array.isArray(data?.data) ? data.data.slice(0, 10) : [];
     } catch {
       await client.sendMessage(from, { text: '❌ Error al buscar en YouTube.' }, { quoted: m });
       return;
@@ -40,99 +76,63 @@ module.exports = {
     }
 
     global.playSearchCache = global.playSearchCache || new Map();
-    const cacheKey = `${from}:${m.key.id}`;
-    global.playSearchCache.set(cacheKey, results);
-    setTimeout(() => global.playSearchCache.delete(cacheKey), 5 * 60 * 1000);
+    global.playSearchCache.set(from, { results, at: Date.now() });
+    setTimeout(() => {
+      const c = global.playSearchCache?.get(from);
+      if (c && Date.now() - c.at >= 5 * 60 * 1000) global.playSearchCache.delete(from);
+    }, 5 * 60 * 1000);
 
-    const rows = results.map((r, i) => ({
-      title: `${i + 1}. ${r.title}`.slice(0, 60),
-      description: `${r.duration} ⊹ ${r.views}`.slice(0, 70),
-      id: `playselect|${cacheKey}|${i}`,
-    }));
+    const DIV = '࿇ ══━━━✥◈✥━━━══ ࿇';
 
-    const listMessage = {
-      text: '🐾 Maneki-Neko Bot\n\n> Elige una canción de la lista para descargarla',
-      title: '𖣔 ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴅᴇ ʙúꜱQᴜᴇᴅᴀ ˚ʚ♡ɞ˚',
-      footer: 'El Vigilante',
-      interactiveButtons: [
-        {
-          name: 'single_select',
-          buttonParamsJson: JSON.stringify({
-            title: 'Ver resultados',
-            sections: [
-              {
-                title: `Resultados para: ${query}`,
-                rows,
-              },
-            ],
-          }),
-        },
-      ],
-    };
+    let lista = '';
+    results.forEach((r, i) => {
+      lista += `❧ ${i + 1}. ${r.title}\n> ${r.duration} ⊹ ${r.views}\n`;
+    });
 
-    await client.sendMessage(from, listMessage, { quoted: m });
-  },
+    const caption =
+`${DIV}
 
-  before: async (client, m, ctx = {}) => {
-    const id = String(m.message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson ? '' : '');
+         🐾  ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ  🐾
 
-    let selectedId = '';
-    const paramsJson = m.message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
-    if (paramsJson) {
-      try {
-        const parsed = JSON.parse(paramsJson);
-        selectedId = parsed?.id || '';
-      } catch {}
-    }
-    if (!selectedId) {
-      selectedId = m.message?.listResponseMessage?.singleSelectReply?.selectedRowId || '';
-    }
+${DIV}
 
-    if (!selectedId.startsWith('playselect|')) return false;
+> Búsqueda: ${query}
 
-    const [, cacheKey, indexStr] = selectedId.split('|');
-    const index = parseInt(indexStr, 10);
+${lista}
+${DIV}
 
-    const cache = global.playSearchCache;
-    const results = cache?.get(cacheKey);
-    if (!results || !results[index]) {
-      await client.sendMessage(m.key.remoteJid, { text: '❌ Esta búsqueda ya expiró, vuelve a usar .play' }, { quoted: m });
-      return true;
-    }
+❧ Responde con: .play <número>
+❧ O escribe: .play aleatorio
 
-    const selected = results[index];
-    const settings = ctx?.settings || {};
-    const axios     = ctx?.axios;
-    const apiBase   = String(settings.apiBaseUrl || '').trim();
-    const apiKey    = String(settings.apiKey || '').trim();
-    const from      = m.key.remoteJid;
+${DIV}`;
 
-    await client.sendMessage(from, { text: `🐾 Descargando: ${selected.title}...` }, { quoted: m });
-
-    try {
-      const { data } = await axios.get(`${apiBase}/api/download/ytaudio`, {
-        params: { url: selected.url, apiKey },
-        timeout: 30000,
-      });
-
-      const downloadUrl = data?.result?.download_url;
-      const title        = data?.result?.title || selected.title;
-
-      if (!downloadUrl) {
-        await client.sendMessage(from, { text: '❌ No se pudo obtener el audio.' }, { quoted: m });
-        return true;
-      }
-
-      await client.sendMessage(from, {
-        audio: { url: downloadUrl },
-        mimetype: 'audio/mpeg',
-        fileName: `${title}.mp3`,
-      }, { quoted: m });
-    } catch {
-      await client.sendMessage(from, { text: '❌ Error al descargar el audio.' }, { quoted: m });
-    }
-
-    return true;
+    await client.sendMessage(from, { text: caption }, { quoted: m });
   },
 };
-              
+
+async function descargarYEnviar(client, m, from, selected, apiBase, apiKey, axios) {
+  await client.sendMessage(from, { text: `🐾 Descargando: ${selected.title}...` }, { quoted: m });
+
+  try {
+    const { data } = await axios.get(`${apiBase}/api/download/ytaudio`, {
+      params: { url: selected.url, apiKey },
+      timeout: 30000,
+    });
+
+    const downloadUrl = data?.result?.download_url;
+    const title        = data?.result?.title || selected.title;
+
+    if (!downloadUrl) {
+      await client.sendMessage(from, { text: '❌ No se pudo obtener el audio.' }, { quoted: m });
+      return;
+    }
+
+    await client.sendMessage(from, {
+      audio: { url: downloadUrl },
+      mimetype: 'audio/mpeg',
+      fileName: `${title}.mp3`,
+    }, { quoted: m });
+  } catch {
+    await client.sendMessage(from, { text: '❌ Error al descargar el audio.' }, { quoted: m });
+  }
+}
