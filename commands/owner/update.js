@@ -3,7 +3,7 @@ const { exec } = require('child_process')
 const OWNERS = ['59177474230@s.whatsapp.net', '573223090406@s.whatsapp.net']
 
 module.exports = {
-  command: ['update', 'actualizar', 'gitpull'],
+  command: ['update', 'actualizar', 'fix'],
   description: 'Actualiza el bot desde el repositorio oficial',
   categoria: 'sistema',
   owner: true
