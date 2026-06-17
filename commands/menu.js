@@ -64,7 +64,7 @@ module.exports = {
       const meta = CAT_META[cat] || { title: cat.toUpperCase() };
       let block  = `『 ${meta.title} 』\n\n`;
       for (const { cmd, desc } of grouped[cat]) {
-        block += `⊹ ${prefix}${cmd}\n`;
+        block += `🍪 ${prefix}${cmd}\n`;
         if (desc) block += `> ${desc}\n`;
       }
       block += `\n`;
@@ -80,13 +80,13 @@ ${BORDER_BOTTOM}
 
 『 ᴇꜱᴛᴀᴅᴏ 』
 
-⊹ Prefijo: ${prefix}
+🍩 Prefijo: ${prefix}
 > Símbolo usado para activar comandos
-⊹ API: ${apiReady ? 'Activa' : 'Pendiente'}
+🍩 API: ${apiReady ? 'Activa' : 'Pendiente'}
 > Estado de conexión con el servidor externo
-⊹ Uptime: ${uptime}
+🍩 Uptime: ${uptime}
 > Tiempo que el bot lleva encendido
-⊹ Comandos: ${seen.size}
+🍩 Comandos: ${seen.size}
 > Total de comandos disponibles
 
 ${sections}${BORDER_TOP}
