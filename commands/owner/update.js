@@ -6,7 +6,7 @@ module.exports = {
   command: ['update', 'actualizar', 'fix'],
   description: 'Actualiza el bot desde el repositorio oficial',
   categoria: 'sistema',
-  owner: true
+  owner: true,
 
   run: async (client, m, args, from) => {
     const sender = m.sender || m.key?.participant || m.key?.remoteJid || ''
@@ -120,4 +120,4 @@ module.exports = {
       })
     })
   }
-  }
+}
