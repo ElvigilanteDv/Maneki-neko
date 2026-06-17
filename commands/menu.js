@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   command: ['menu', 'help', 'comandos'],
   description: 'Muestra el menú de comandos',
-  categoria: 'general',
+  categoría : 'sistema',
 
   run: async (client, m, args, from, isCreator, ctx = {}) => {
     const prefix   = ctx?.prefix || '.';
@@ -32,25 +32,9 @@ module.exports = {
 
     const CAT_ORDER = ['descargas', 'grupos', 'juegos', 'herramientas', 'sistema', 'owner', 'general'];
 
-    // Comandos que NO aparecen en el menú (aliases ocultos / spam)
+    // Comandos que NO aparecen en el menú (solo el propio menu y sus aliases)
     const HIDDEN = new Set([
       'menu','help','comandos',
-      'antispamstickers','antispamimage','antispamimages',
-      'antispamvideos','antispamaudios','antispamvoice',
-      'everyone','mencionartodos',
-      'ban','addadmin','removeadmin','quitaradmin',
-      'del','delete',
-      'adivina','numero','guess',
-      'verdad','pregunta','truth',
-      'reto','challenge','desafio',
-      'ruleta','wheel','suerte',
-      'time','reloj',
-      'system','estado',
-      'botinfo','info',
-      'velocidad','ping','internet','conexion',
-      'groupinfo','ginfo',
-      'fecha','dia',
-      'recursos','stats',
     ]);
 
     const grouped = {};
