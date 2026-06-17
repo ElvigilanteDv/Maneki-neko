@@ -82,29 +82,30 @@ module.exports = {
       if (c && Date.now() - c.at >= 5 * 60 * 1000) global.playSearchCache.delete(from);
     }, 5 * 60 * 1000);
 
-    const DIV = '࿇ ══━━━✥◈✥━━━══ ࿇';
+    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
+    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
 
     let lista = '';
     results.forEach((r, i) => {
-      lista += `❧ ${i + 1}. ${r.title}\n> ${r.duration} ⊹ ${r.views}\n`;
+      lista += `⊹ ${i + 1}. ${r.title}\n> ${r.duration} ⊹ ${r.views}\n`;
     });
 
     const caption =
-`${DIV}
-
-         🐾  ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ  🐾
-
-${DIV}
+`${BORDER_TOP}
+       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ
+${BORDER_BOTTOM}
 
 > Búsqueda: ${query}
 
+『 ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ 』
+
 ${lista}
-${DIV}
+⊹ Responde con: .play <número>
+⊹ O escribe: .play aleatorio
 
-❧ Responde con: .play <número>
-❧ O escribe: .play aleatorio
-
-${DIV}`;
+${BORDER_TOP}
+       🐾 El Vigilante
+${BORDER_BOTTOM}`;
 
     await client.sendMessage(from, { text: caption }, { quoted: m });
   },
