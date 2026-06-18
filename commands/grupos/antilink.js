@@ -33,24 +33,18 @@ module.exports = {
     saveSettings({ groupOptions });
 
     const estado = newState ? 'Activado' : 'Desactivado';
-    const icono  = newState ? '✅' : '❌';
 
     await client.sendMessage(from, {
       text:
 `${BORDER_TOP}
-       ᴀɴᴛɪʟɪɴᴋ
+       _Anti Link_
 ${BORDER_BOTTOM}
 
-【 ᴇꜱᴛᴀᴅᴏ 】
+• Estado: *${estado}*
 
-⊹ ${icono} ${estado}
-> Los enlaces de WhatsApp serán ${newState ? 'eliminados y el usuario recibirá advertencias' : 'permitidos en este grupo'}
-
-⊹ Advertencias: 3 máximo
-> Al llegar a 3 el usuario es expulsado
-
-${BORDER_TOP}
-${BORDER_BOTTOM}`
+${newState ? '• Los enlaces serán eliminados' : '• Los enlaces serán permitidos'}
+• Advertencias: 3 máximo
+• Al llegar a 3 el usuario es expulsado`
     }, { quoted: m });
   },
 };
