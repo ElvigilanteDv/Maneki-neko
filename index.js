@@ -1030,43 +1030,81 @@ async function startBot() {
     });
 
     // ── group-participants.update — Bienvenida / Despedida ───────────────────
-    sock.ev.on('group-participants.update', async (update) => {
-      if (token !== socketToken) return;
+sock.ev.on('group-participants.update', async (update) => {
+  if (token !== socketToken) return;
 
-      const { id: groupId, participants, action } = update;
-      if (!groupId || !participants?.length) return;
-      if (!['add', 'remove', 'leave'].includes(action)) return;
+  const { id: groupId, participants, action } = update;
+  if (!groupId || !participants?.length) return;
+  if (!['add', 'remove', 'leave'].includes(action)) return;
 
-      const groupOpts = getGroupOptions(groupId);
-      const isBienvenida = action === 'add' && groupOpts.bienvenida;
-      const isDespdida   = (action === 'remove' || action === 'leave') && groupOpts.despedida;
-      if (!isBienvenida && !isDespdida) return;
+  const groupOpts = getGroupOptions(groupId);
+  const isBienvenida = action === 'add' && groupOpts.bienvenida;
+  const isDespdida   = (action === 'remove' || action === 'leave') && groupOpts.despedida;
+  if (!isBienvenida && !isDespdida) return;
 
-      let metadata   = null;
-      let groupName  = 'el grupo';
-      let groupImage = null;
+  let metadata   = null;
+  let groupName  = 'el grupo';
+  let groupImage = null;
 
+  try {
+    metadata  = await sock.groupMetadata(groupId);
+    groupName = metadata?.subject || 'el grupo';
+  } catch {}
+
+  try {
+    const ppUrl = await sock.profilePictureUrl(groupId, 'image');
+    if (ppUrl) {
+      const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
+      groupImage = Buffer.from(resp.data);
+    }
+  } catch {}
+
+  for (const participant of participants) {
+    let userJid = participant;
+    let userNum = normalizeNumber(participant);
+    
+    if (!userNum && participant.includes('@lid')) {
       try {
-        metadata  = await sock.groupMetadata(groupId);
-        groupName = metadata?.subject || 'el grupo';
-      } catch {}
-
-      try {
-        const ppUrl = await sock.profilePictureUrl(groupId, 'image');
-        if (ppUrl) {
-          const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
-          groupImage = Buffer.from(resp.data);
+        const store = sock.store || sock.authState?.store;
+        const contacts = store?.contacts || sock.contacts || {};
+        for (const [lidKey, contact] of Object.entries(contacts)) {
+          const cId = String(contact?.id || contact?.jid || lidKey || '');
+          if (cId === participant || cId.split('@')[0] === participant.split('@')[0]) {
+            const cNum = String(contact?.phoneNumber || contact?.phone || contact?.id || '')
+              .split('@')[0].split(':')[0].replace(/\D/g, '');
+            if (cNum) {
+              userNum = cNum;
+              userJid = `${cNum}@s.whatsapp.net`;
+              break;
+            }
+          }
         }
       } catch {}
+    }
 
-      for (const participant of participants) {
-        const userNum = normalizeNumber(participant);
-        const userJid = `${userNum}@s.whatsapp.net`;
-        const displayName = await resolveParticipantName(sock, userJid, metadata);
-        const mention     = `@${userNum}`;
+    if (!userNum) {
+      try {
+        const contact = await sock.onWhatsApp(participant);
+        if (contact && contact.length > 0 && contact[0].jid) {
+          const cNum = normalizeNumber(contact[0].jid);
+          if (cNum) {
+            userNum = cNum;
+            userJid = contact[0].jid;
+          }
+        }
+      } catch {}
+    }
 
-        if (isBienvenida) {
-          const caption =
+    if (!userNum) {
+      userJid = participant;
+      userNum = participant.split('@')[0].replace(/\D/g, '');
+    }
+
+    const displayName = await resolveParticipantName(sock, userJid, metadata);
+    const mention = `@${userNum}`;
+
+    if (isBienvenida) {
+      const caption =
 `╭━━━〔 🐾 *BIENVENIDA* 〕━━━⬣
 
 👤 *¡Hola, ${displayName}!*
@@ -1084,18 +1122,18 @@ async function startBot() {
 ━━━━━━━━━━━━━━━━━━
 💙 *MANEKI-NEKO BOT*`;
 
-          try {
-            if (groupImage) {
-              await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
-            } else {
-              await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
-            }
-          } catch (e) {
-            log('ERR', `Bienvenida error: ${e?.message || e}`, 'red');
-          }
+      try {
+        if (groupImage) {
+          await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
+        } else {
+          await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
+        }
+      } catch (e) {
+        log('ERR', `Bienvenida error: ${e?.message || e}`, 'red');
+      }
 
-        } else if (isDespdida) {
-          const caption =
+    } else if (isDespdida) {
+      const caption =
 `╭━━━〔 👋 *DESPEDIDA* 〕━━━⬣
 
 😢 *${displayName} ha salido*
@@ -1109,18 +1147,18 @@ async function startBot() {
 ━━━━━━━━━━━━━━━━━━
 💙 *MANEKI-NEKO BOT*`;
 
-          try {
-            if (groupImage) {
-              await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
-            } else {
-              await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
-            }
-          } catch (e) {
-            log('ERR', `Despedida error: ${e?.message || e}`, 'red');
-          }
+      try {
+        if (groupImage) {
+          await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
+        } else {
+          await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
         }
+      } catch (e) {
+        log('ERR', `Despedida error: ${e?.message || e}`, 'red');
       }
-    });
+    }
+  }
+});
 
     // ── messages.upsert ──────────────────────────────────────────────────────
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
