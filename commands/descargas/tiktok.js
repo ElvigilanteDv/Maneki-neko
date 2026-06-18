@@ -18,7 +18,7 @@ module.exports = {
       return client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       _TikTok Downloader Maneki_
+       _TikTok Downloader Maneki 🐾_
 ${BORDER_BOTTOM}
 
 • Uso correcto:
