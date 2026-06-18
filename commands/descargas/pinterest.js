@@ -1,7 +1,7 @@
 module.exports = {
   command: ['pinterest', 'pin', 'pins'],
   description: 'Busca imágenes en Pinterest por palabra clave',
-  categoria: 'imagenes',
+  categoria: 'descargas',
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const { axios, settings } = ctx;
