@@ -1,5 +1,5 @@
 module.exports = {
-  command: ['play2', 'ytaudio', 'musica'],
+  command: ['play', 'ytaudio', 'musica'],
   description: 'Busca y descarga audio de YouTube',
   categoria: 'descargas',
 
@@ -100,8 +100,8 @@ ${BORDER_BOTTOM}
 『 ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ 』
 
 ${lista}
-⊹ Responde con: .play2 <número>
-⊹ O escribe: .play2 aleatorio
+⊹ Responde con: .play <número>
+⊹ O escribe: .play aleatorio
 
 ${BORDER_TOP}
        🐾 El Vigilante
