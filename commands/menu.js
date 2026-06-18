@@ -27,10 +27,10 @@ module.exports = {
       herramientas: { title: 'ʜᴇʀʀᴀᴍɪᴇɴᴛᴀꜱ' },
       sistema:      { title: 'ꜱɪꜱᴛᴇᴍᴀ'      },
       owner:        { title: 'ᴏᴡɴᴇʀ'        },
-      general:      { title: 'ɢᴇɴᴇʀᴀʟ'      },
+      anime:        { title: 'ᴀɴɪᴍᴇ'      },
     };
 
-    const CAT_ORDER = ['descargas', 'grupos', 'juegos', 'herramientas', 'sistema', 'owner', 'general'];
+    const CAT_ORDER = ['descargas', 'grupos', 'juegos', 'herramientas', 'sistema', 'owner', 'anime'];
 
     // Comandos que NO aparecen en el menú (solo el propio menu y sus aliases)
     const HIDDEN = new Set([
