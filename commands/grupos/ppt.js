@@ -65,6 +65,11 @@ ${BORDER_BOTTOM}
 
 ⊹ @${targetJid.split('@')[0]}
 
+【 ᴜꜱᴏ 】
+
+⊹ ${prefix}ppt @usuario
+⊹ Responde el mensaje de alguien
+
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`;
 
