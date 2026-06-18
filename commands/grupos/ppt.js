@@ -19,15 +19,24 @@ module.exports = {
       }
     }
 
+    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
+    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
+
     if (!targetJid) {
       await client.sendMessage(from, {
-        text: `❌ Menciona a alguien o responde su mensaje.\n> Ejemplo: ${prefix}ppt @usuario`
+        text:
+`${BORDER_TOP}
+       _Foto de Perfil_
+${BORDER_BOTTOM}
+
+• Uso correcto:
+➜ ${prefix}ppt @usuario
+➜ ${prefix}ppt (responder mensaje)
+
+• Obtiene la foto de perfil del usuario.`
       }, { quoted: m });
       return;
     }
-
-    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
-    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
 
     let ppUrl = null;
 
@@ -45,14 +54,11 @@ module.exports = {
       await client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       ꜰᴏᴛᴏ ᴅᴇ ᴘᴇʀꜰɪʟ
+       _Foto de Perfil_
 ${BORDER_BOTTOM}
 
-⊹ @${targetJid.split('@')[0]}
-> No tiene foto de perfil o la tiene privada
-
-${BORDER_TOP}
-${BORDER_BOTTOM}`,
+• @${targetJid.split('@')[0]}
+> No tiene foto de perfil o la tiene privada`,
         mentions: [targetJid],
       }, { quoted: m });
       return;
@@ -60,18 +66,10 @@ ${BORDER_BOTTOM}`,
 
     const caption =
 `${BORDER_TOP}
-       ꜰᴏᴛᴏ ᴅᴇ ᴘᴇʀꜰɪʟ
+       _Foto de Perfil_
 ${BORDER_BOTTOM}
 
-⊹ @${targetJid.split('@')[0]}
-
-【 ᴜꜱᴏ 】
-
-⊹ ${prefix}ppt @usuario
-⊹ Responde el mensaje de alguien
-
-${BORDER_TOP}
-${BORDER_BOTTOM}`;
+• @${targetJid.split('@')[0]}`;
 
     try {
       await client.sendMessage(from, {
