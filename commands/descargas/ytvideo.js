@@ -7,7 +7,7 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 const REQUEST_TIMEOUT = 120000;
 const MAX_VIDEO_BYTES = 1500 * 1024 * 1024;
-const VIDEO_AS_DOCUMENT_THRESHOLD = 150 * 1024 * 1024;
+const VIDEO_AS_DOCUMENT_THRESHOLD = 70 * 1024 * 1024;
 const VIDEO_QUALITY = '720p';
 
 const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
