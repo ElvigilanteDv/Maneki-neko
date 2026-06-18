@@ -115,7 +115,7 @@ async function descargarYEnviar(client, m, from, selected, apiBase, apiKey, axio
   await client.sendMessage(from, { text: `🐾 Descargando: ${selected.title}...` }, { quoted: m });
 
   try {
-    const { data } = await axios.get(`${apiBase}/api/download/ytvideo`, {
+    const { data } = await axios.get(`${apiBase}/api/download/ytaudio`, {
       params: { url: selected.url, apiKey },
       timeout: 30000,
     });
