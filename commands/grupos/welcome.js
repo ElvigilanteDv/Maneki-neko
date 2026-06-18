@@ -27,7 +27,7 @@ module.exports = {
        _${tipo}_
 ${BORDER_BOTTOM}
 
-🌸 Uso correcto:
+🐾 Uso correcto:
 
 ➜ .${rawCmd} on
 ➜ .${rawCmd} off
