@@ -15,6 +15,8 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true })
 const BORDER_TOP = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮'
 const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯'
 
+const searchCache = {}
+
 function safeFileName(n) {
   return String(n || 'video').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'video'
 }
@@ -24,95 +26,7 @@ function extractYouTubeUrl(text) {
   return m ? m[0].trim() : ''
 }
 
-module.exports = {
-  command: ['ytvideo', 'ytmp4', 'video', 'ytv'],
-  description: 'Descarga videos de YouTube en 720p',
-  categoria: 'descargas',
-
-  run: async (client, m, args, from) => {
-    const input = args.join(' ').trim()
-
-    if (!input) {
-      return client.sendMessage(from, {
-        text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Descarga videos de YouTube\n⊹ Calidad: ${VIDEO_QUALITY}\n\n> .ytvideo <nombre o link>\n> .ytvideo Naruto Opening 1\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
-      }, { quoted: m })
-    }
-
-    const sent = await client.sendMessage(from, {
-      text: `${BORDER_TOP}\n       🔍 ʙᴜsᴄᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
-    }, { quoted: m })
-
-    const linkDirecto = extractYouTubeUrl(input)
-    let videoUrl = linkDirecto || ''
-    let title = 'video'
-    let thumbnail = null
-    let resultados = []
-
-    if (!linkDirecto) {
-      try {
-        const res = await fetch(`${VIGILANTE_API}/search/youtube?apiKey=${VIGILANTE_KEY}&query=${encodeURIComponent(input)}`)
-        const data = await res.json()
-        if (!data.status || !data.data?.length) throw new Error('Sin resultados')
-
-        resultados = data.data.slice(0, 6)
-        videoUrl = resultados[0].url
-        title = resultados[0].title
-        thumbnail = resultados[0].thumbnail
-
-        if (resultados.length === 1) {
-          return descargarVideo(client, m, from, videoUrl, title, sent)
-        }
-
-        const rows = resultados.map((v, i) => ({
-          header: String(v.author || 'Desconocido').slice(0, 20),
-          title: String(v.title || '').slice(0, 35),
-          description: `⏱️ ${v.duration || '?'} | 👁️ ${v.views || '?'}`,
-          id: `ytvs_${i}`
-        }))
-
-        await client.sendMessage(from, {
-          text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Búsqueda: ${input}\n⊹ ${resultados.length} resultados\n\n> Responde con el número\n> 1-${resultados.length} para elegir\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
-        }, { quoted: m })
-
-        client.tempYTSearch = client.tempYTSearch || {}
-        client.tempYTSearch[from] = { resultados, timeout: Date.now() + 60000 }
-
-      } catch (e) {
-        return client.sendMessage(from, {
-          text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Estado: ❌ Sin resultados\n⊹ Prueba con otro nombre\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
-        }, { quoted: m })
-      }
-    } else {
-      return descargarVideo(client, m, from, videoUrl, title, sent)
-    }
-  },
-
-  before: async (client, m) => {
-    const from = m.chat || m.key?.remoteJid
-    const text = m.text?.trim() || ''
-    const num = parseInt(text)
-
-    if (!client.tempYTSearch || !client.tempYTSearch[from]) return false
-    if (isNaN(num) || num < 1 || num > (client.tempYTSearch[from]?.resultados?.length || 0)) return false
-    if (Date.now() > client.tempYTSearch[from].timeout) {
-      delete client.tempYTSearch[from]
-      return false
-    }
-
-    const idx = num - 1
-    const video = client.tempYTSearch[from].resultados[idx]
-    delete client.tempYTSearch[from]
-
-    const sent = await client.sendMessage(from, {
-      text: `${BORDER_TOP}\n       ⏳ ᴅᴇsᴄᴀʀɢᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
-    }, { quoted: m })
-
-    await descargarVideo(client, m, from, video.url, video.title, sent)
-    return true
-  }
-}
-
-async function descargarVideo(client, m, from, videoUrl, title, sent) {
+async function descargarVideo(client, m, from, videoUrl, title) {
   try {
     const apiRes = await fetch(`${VIGILANTE_API}/download/ytvideo?url=${encodeURIComponent(videoUrl)}&quality=${VIDEO_QUALITY}&apiKey=${VIGILANTE_KEY}`)
     const json = await apiRes.json()
@@ -201,5 +115,88 @@ async function descargarVideo(client, m, from, videoUrl, title, sent) {
     await client.sendMessage(from, {
       text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ᴠɪᴅᴇᴏ ᴅᴇsᴄᴀʀɢᴀᴅᴏ 』\n\n⊹ Estado: ❌ Error\n⊹ ${e.message || 'No se pudo descargar'}\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
     }, { quoted: m })
+  }
+}
+
+module.exports = {
+  command: ['ytvideo', 'ytmp4', 'video', 'ytv'],
+  description: 'Descarga videos de YouTube en 720p',
+  categoria: 'descargas',
+
+  run: async (client, m, args, from) => {
+    const input = args.join(' ').trim()
+
+    const num = parseInt(input)
+    if (!isNaN(num) && input === String(num)) {
+      const cache = searchCache[from]
+      if (!cache || Date.now() > cache.timeout) {
+        delete searchCache[from]
+        return client.sendMessage(from, {
+          text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ La búsqueda expiró\n⊹ Vuelve a buscar primero\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
+        }, { quoted: m })
+      }
+      if (num < 1 || num > cache.resultados.length) {
+        return client.sendMessage(from, {
+          text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Número inválido\n⊹ Elige entre 1-${cache.resultados.length}\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
+        }, { quoted: m })
+      }
+
+      const video = cache.resultados[num - 1]
+      delete searchCache[from]
+
+      const sent = await client.sendMessage(from, {
+        text: `${BORDER_TOP}\n       ⏳ ᴅᴇsᴄᴀʀɢᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
+      }, { quoted: m })
+
+      return descargarVideo(client, m, from, video.url, video.title)
+    }
+
+    if (!input) {
+      return client.sendMessage(from, {
+        text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Descarga videos de YouTube\n⊹ Calidad: ${VIDEO_QUALITY}\n\n> .ytvideo <nombre o link>\n> .ytvideo Naruto Opening 1\n> .ytvideo <número> para elegir\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
+      }, { quoted: m })
+    }
+
+    const sent = await client.sendMessage(from, {
+      text: `${BORDER_TOP}\n       🔍 ʙᴜsᴄᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
+    }, { quoted: m })
+
+    const linkDirecto = extractYouTubeUrl(input)
+
+    if (linkDirecto) {
+      return descargarVideo(client, m, from, linkDirecto, 'video')
+    }
+
+    try {
+      const res = await fetch(`${VIGILANTE_API}/search/youtube?apiKey=${VIGILANTE_KEY}&query=${encodeURIComponent(input)}`)
+      const data = await res.json()
+      if (!data.status || !data.data?.length) throw new Error('Sin resultados')
+
+      const resultados = data.data.slice(0, 10)
+
+      if (resultados.length === 1) {
+        return descargarVideo(client, m, from, resultados[0].url, resultados[0].title)
+      }
+
+      searchCache[from] = {
+        resultados,
+        timeout: Date.now() + 120000
+      }
+
+      let lista = ''
+      resultados.forEach((v, i) => {
+        lista += `\n⊹ ${i + 1}. ${String(v.title || '').slice(0, 40)}`
+        lista += `\n   ⏱️ ${v.duration || '?'} | 👁️ ${v.views || '?'} | 👤 ${String(v.author || 'Desconocido').slice(0, 18)}`
+      })
+
+      await client.sendMessage(from, {
+        text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Búsqueda: ${input}\n⊹ ${resultados.length} resultados${lista}\n\n> .ytvideo <número>\n> Ejemplo: .ytvideo 1\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
+      }, { quoted: m })
+
+    } catch (e) {
+      await client.sendMessage(from, {
+        text: `${BORDER_TOP}\n       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ\n${BORDER_BOTTOM}\n\n『 ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ 』\n\n⊹ Estado: ❌ Sin resultados\n⊹ Prueba con otro nombre\n\n${BORDER_TOP}\n       🐾 El Vigilante\n${BORDER_BOTTOM}`
+      }, { quoted: m })
+    }
   }
 }
