@@ -2,6 +2,8 @@ module.exports = {
   command: ['cerrar', 'close', 'cgroup'],
   description: 'Cierra el grupo (solo admins pueden enviar mensajes)',
   categoria: 'grupos',
+  admin: true,
+  group: true,
 
   run: async (client, m, args, from) => {
     if (!m.key.remoteJid.endsWith('@g.us')) {
