@@ -24,6 +24,7 @@ ${BORDER_BOTTOM}
 • Uso correcto:
 ➜ .tiktok https://vm.tiktok.com/xxxxx
 ➜ .tiktok goku 
+➜ 🐈 _*Maneki*_
 
 • Descarga o busca videos de TikTok.`
       }, { quoted: m });
@@ -40,7 +41,7 @@ ${BORDER_BOTTOM}
 
       if (isUrl) {
         await client.sendMessage(from, {
-          text: `⏳ Descargando video...`
+          text: `🐾 Descargando video...`
         }, { quoted: m });
 
         const downloadUrl = `${apiBase}/api/download/tiktok`;
@@ -54,7 +55,7 @@ ${BORDER_BOTTOM}
 
         if (!data.status || !data.data || !data.data.media) {
           return client.sendMessage(from, {
-            text: '❌ No pude descargar el video.'
+            text: '🐈 No pude descargar el video.'
           }, { quoted: m });
         }
 
@@ -64,7 +65,7 @@ ${BORDER_BOTTOM}
 
         const caption = 
 `${BORDER_TOP}
-       _TikTok Descargado_
+       _TikTok Descargado Maneki 🐈_
 ${BORDER_BOTTOM}
 
 📹 *${data.data.title || 'Sin título'}*
@@ -82,7 +83,7 @@ ${BORDER_BOTTOM}
 
       } else {
         await client.sendMessage(from, {
-          text: `🔍 Buscando "${input}" en TikTok...`
+          text: `🐈 Buscando "${input}" en TikTok...`
         }, { quoted: m });
 
         const searchUrl = `${apiBase}/api/search/tiktok`;
@@ -124,7 +125,7 @@ ${BORDER_BOTTOM}
 
         const caption = 
 `${BORDER_TOP}
-       _TikTok Encontrado_
+       _TikTok Encontrado Maneki 🐈_
 ${BORDER_BOTTOM}
 
 📹 *${downloadData.data.title || 'Sin título'}*
@@ -135,7 +136,7 @@ ${BORDER_BOTTOM}
 💬 Comentarios: ${stats.comments || 0}
 🔗 Compartidos: ${stats.shares || 0}
 
-🔍 *Búsqueda:* "${input}"`;
+🐾 *Búsqueda:* "${input}"`;
 
         await client.sendMessage(from, {
           video: { url: videoSinMarca },
