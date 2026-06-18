@@ -2,6 +2,8 @@ module.exports = {
   command: ['abrir', 'open', 'ogroup'],
   description: 'Abre el grupo (todos pueden enviar mensajes)',
   categoria: 'grupos',
+  admin: true,
+  group: true,
 
   run: async (client, m, args, from) => {
     if (!m.key.remoteJid.endsWith('@g.us')) {
@@ -14,9 +16,16 @@ module.exports = {
     const groupMetadata = await client.groupMetadata(from);
     const senderId = m.key.participant || m.key.remoteJid;
     
-    const isAdmin = groupMetadata.participants.some(p => 
-      p.id === senderId && p.admin !== null
-    );
+    let isAdmin = false;
+    for (const p of groupMetadata.participants) {
+      const pId = String(p.id || '');
+      if (pId === senderId || pId === m.key.participant) {
+        if (p.admin !== null) {
+          isAdmin = true;
+          break;
+        }
+      }
+    }
 
     if (!isAdmin) {
       await client.sendMessage(from, {
@@ -26,9 +35,16 @@ module.exports = {
     }
 
     const botId = client.user.id;
-    const isBotAdmin = groupMetadata.participants.some(p => 
-      p.id === botId && p.admin !== null
-    );
+    let isBotAdmin = false;
+    for (const p of groupMetadata.participants) {
+      const pId = String(p.id || '');
+      if (pId === botId) {
+        if (p.admin !== null) {
+          isBotAdmin = true;
+          break;
+        }
+      }
+    }
 
     if (!isBotAdmin) {
       await client.sendMessage(from, {
