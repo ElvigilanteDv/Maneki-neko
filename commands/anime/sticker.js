@@ -1,6 +1,7 @@
 const fs   = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const WebP = require('node-webpmux');
 
 const TEMP_DIR = path.join(process.cwd(), 'tmp');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -28,7 +29,7 @@ function convertToSticker(inputPath, outputPath, animated = false) {
   return new Promise((resolve, reject) => {
     const filters = 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2';
     const args = animated
-      ? ['-y', '-i', inputPath, '-vf', filters, '-t', '00:00:10', '-loop', '0', '-preset', 'default', '-an', '-vsync', '0', outputPath]
+      ? ['-y', '-i', inputPath, '-vf', filters, '-t', '00:00:30', '-loop', '0', '-preset', 'default', '-an', '-vsync', '0', outputPath]
       : ['-y', '-i', inputPath, '-vf', filters, '-preset', 'default', '-an', outputPath];
 
     const ff = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -38,6 +39,23 @@ function convertToSticker(inputPath, outputPath, animated = false) {
       else reject(new Error(`ffmpeg salió con código ${code}`));
     });
   });
+}
+
+async function setStickerMetadata(filePath, author, pack) {
+  try {
+    const img = new WebP.Image();
+    await img.load(filePath);
+    const exif = {
+      'sticker-author': author || 'Maneki Neko',
+      'sticker-pack': pack || '🐾 ᴍᴀɴᴇᴋɪ ɴᴇᴋᴏ',
+    };
+    const exifBuffer = Buffer.from(JSON.stringify(exif));
+    await img.save(filePath);
+    return true;
+  } catch (error) {
+    console.error('Error al agregar metadatos:', error);
+    return false;
+  }
 }
 
 module.exports = {
@@ -73,9 +91,9 @@ ${BORDER_BOTTOM}
 
     if (media.type === 'video') {
       const duration = media.msg?.seconds || 0;
-      if (duration > 10) {
+      if (duration > 30) {
         await client.sendMessage(from, {
-          text: '❌ El video no puede durar más de 10 segundos para sticker.'
+          text: '❌ El video no puede durar más de 30 segundos para sticker.'
         }, { quoted: m });
         return;
       }
@@ -106,9 +124,25 @@ ${BORDER_BOTTOM}
 
       if (!fs.existsSync(outputPath)) throw new Error('No se generó el sticker');
 
+      const authorJid = m.key.participant || m.key.remoteJid || 'Desconocido';
+      const authorNum = authorJid.split('@')[0];
+      
+      let authorName = 'Desconocido';
+      try {
+        const contact = await client.getContact(authorJid);
+        authorName = contact?.name || contact?.pushName || authorNum;
+      } catch {
+        authorName = authorNum;
+      }
+
+      await setStickerMetadata(outputPath, authorName, '🐾 ᴍᴀɴᴇᴋɪ ɴᴇᴋᴏ');
+
+      const stickerBuffer = fs.readFileSync(outputPath);
+
       await client.sendMessage(from, {
-        sticker: fs.readFileSync(outputPath),
+        sticker: stickerBuffer,
       }, { quoted: m });
+
     } catch (e) {
       await client.sendMessage(from, {
         text: `❌ Error al crear el sticker.\n> ${e.message || 'Error desconocido'}`
