@@ -1,6 +1,7 @@
 const fs   = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const WebP = require('node-webpmux');
 
 const TEMP_DIR = path.join(process.cwd(), 'tmp');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -28,7 +29,7 @@ function convertToSticker(inputPath, outputPath, animated = false) {
   return new Promise((resolve, reject) => {
     const filters = 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2';
     const args = animated
-      ? ['-y', '-i', inputPath, '-vf', filters, '-t', '00:00:10', '-loop', '0', '-preset', 'default', '-an', '-vsync', '0', outputPath]
+      ? ['-y', '-i', inputPath, '-vf', filters, '-t', '00:00:30', '-loop', '0', '-preset', 'default', '-an', '-vsync', '0', outputPath]
       : ['-y', '-i', inputPath, '-vf', filters, '-preset', 'default', '-an', outputPath];
 
     const ff = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -40,6 +41,22 @@ function convertToSticker(inputPath, outputPath, animated = false) {
   });
 }
 
+async function setStickerMetadata(filePath, author, pack) {
+  try {
+    const img = new WebP.Image();
+    await img.load(filePath);
+    const exif = {
+      'sticker-author': author || 'Maneki Neko',
+      'sticker-pack': pack || '🐾 ᴍᴀɴᴇᴋɪ ɴᴇᴋᴏ',
+    };
+    await img.save(filePath);
+    return true;
+  } catch (error) {
+    console.error('Error al agregar metadatos:', error);
+    return false;
+  }
+}
+
 module.exports = {
   command: ['sticker', 's', 'stiker'],
   description: 'Convierte una imagen o video en sticker',
@@ -47,7 +64,6 @@ module.exports = {
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const prefix = ctx?.prefix || '.';
-    const downloadMediaMessage = ctx?.downloadMediaMessage;
 
     const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
     const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
@@ -73,9 +89,9 @@ ${BORDER_BOTTOM}
 
     if (media.type === 'video') {
       const duration = media.msg?.seconds || 0;
-      if (duration > 10) {
+      if (duration > 30) {
         await client.sendMessage(from, {
-          text: '❌ El video no puede durar más de 10 segundos para sticker.'
+          text: '❌ El video no puede durar más de 30 segundos para sticker.'
         }, { quoted: m });
         return;
       }
@@ -89,26 +105,51 @@ ${BORDER_BOTTOM}
 
     try {
       let buffer;
-
-      if (typeof downloadMediaMessage === 'function') {
-        buffer = await downloadMediaMessage(m, 'buffer', {});
-      } else {
-        const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
-        buffer = await dlMedia(m, 'buffer', {});
+      try {
+        buffer = await client.downloadMediaMessage(m);
+      } catch (error) {
+        console.error('Error descargando:', error);
+        await client.sendMessage(from, {
+          text: '❌ No se pudo descargar el archivo. Envía la imagen/video de nuevo.'
+        }, { quoted: m });
+        return;
       }
 
-      if (!buffer || !buffer.length) throw new Error('No se pudo descargar el archivo');
+      if (!buffer || !buffer.length) {
+        await client.sendMessage(from, {
+          text: '❌ No se pudo descargar el archivo. Envía la imagen/video de nuevo.'
+        }, { quoted: m });
+        return;
+      }
 
       fs.writeFileSync(inputPath, buffer);
 
       const animated = media.type === 'video';
       await convertToSticker(inputPath, outputPath, animated);
 
-      if (!fs.existsSync(outputPath)) throw new Error('No se generó el sticker');
+      if (!fs.existsSync(outputPath)) {
+        throw new Error('No se generó el sticker');
+      }
+
+      const authorJid = m.key.participant || m.key.remoteJid || 'Desconocido';
+      const authorNum = authorJid.split('@')[0];
+      
+      let authorName = 'Desconocido';
+      try {
+        const contact = await client.getContact(authorJid);
+        authorName = contact?.name || contact?.pushName || authorNum;
+      } catch {
+        authorName = authorNum;
+      }
+
+      await setStickerMetadata(outputPath, authorName, '🐾 ᴍᴀɴᴇᴋɪ ɴᴇᴋᴏ');
+
+      const stickerBuffer = fs.readFileSync(outputPath);
 
       await client.sendMessage(from, {
-        sticker: fs.readFileSync(outputPath),
+        sticker: stickerBuffer,
       }, { quoted: m });
+
     } catch (e) {
       await client.sendMessage(from, {
         text: `❌ Error al crear el sticker.\n> ${e.message || 'Error desconocido'}`
