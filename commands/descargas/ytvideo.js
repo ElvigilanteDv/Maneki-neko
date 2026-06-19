@@ -1,6 +1,6 @@
 const axios = require('axios')
 
-const VIGILANTE_API = 'https://elvigilante-api.onrender.com/api'
+const VIGILANTE_API = 'https://elvigilante-api.onrender.com/endpoints'
 const VIGILANTE_KEY = 'elvigilante'
 const VIDEO_QUALITY = '720p'
 
