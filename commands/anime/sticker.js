@@ -49,7 +49,6 @@ async function setStickerMetadata(filePath, author, pack) {
       'sticker-author': author || 'Maneki Neko',
       'sticker-pack': pack || '🐾 ᴍᴀɴᴇᴋɪ ɴᴇᴋᴏ',
     };
-    const exifBuffer = Buffer.from(JSON.stringify(exif));
     await img.save(filePath);
     return true;
   } catch (error) {
@@ -65,7 +64,6 @@ module.exports = {
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const prefix = ctx?.prefix || '.';
-    const downloadMediaMessage = ctx?.downloadMediaMessage;
 
     const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
     const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
@@ -107,22 +105,31 @@ ${BORDER_BOTTOM}
 
     try {
       let buffer;
-
-      if (typeof downloadMediaMessage === 'function') {
-        buffer = await downloadMediaMessage(m, 'buffer', {});
-      } else {
-        const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
-        buffer = await dlMedia(m, 'buffer', {});
+      try {
+        buffer = await client.downloadMediaMessage(m);
+      } catch (error) {
+        console.error('Error descargando:', error);
+        await client.sendMessage(from, {
+          text: '❌ No se pudo descargar el archivo. Envía la imagen/video de nuevo.'
+        }, { quoted: m });
+        return;
       }
 
-      if (!buffer || !buffer.length) throw new Error('No se pudo descargar el archivo');
+      if (!buffer || !buffer.length) {
+        await client.sendMessage(from, {
+          text: '❌ No se pudo descargar el archivo. Envía la imagen/video de nuevo.'
+        }, { quoted: m });
+        return;
+      }
 
       fs.writeFileSync(inputPath, buffer);
 
       const animated = media.type === 'video';
       await convertToSticker(inputPath, outputPath, animated);
 
-      if (!fs.existsSync(outputPath)) throw new Error('No se generó el sticker');
+      if (!fs.existsSync(outputPath)) {
+        throw new Error('No se generó el sticker');
+      }
 
       const authorJid = m.key.participant || m.key.remoteJid || 'Desconocido';
       const authorNum = authorJid.split('@')[0];
