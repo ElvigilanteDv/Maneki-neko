@@ -93,7 +93,7 @@ ${sections}${BORDER_TOP}
        🐾 El Vigilante
 ${BORDER_BOTTOM}`;
 
-    const IMAGE_URL = 'https://files.catbox.moe/de4b2l.png';
+    const IMAGE_URL = 'https://files.catbox.moe/8r6m4c.jpg';
 
     try {
       let imageBuffer = null;
