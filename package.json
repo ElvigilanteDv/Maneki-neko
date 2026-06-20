@@ -8,10 +8,11 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "github:ElvigilanteDv/bails.git",
     "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "github:ElvigilanteDv/bails.git",
     "axios": "^1.9.0",
     "cheerio": "^1.0.0",
+    "dotenv": "^17.4.2",
     "fluent-ffmpeg": "^2.1.2",
     "form-data": "^4.0.1",
     "moment-timezone": "^0.5.45",

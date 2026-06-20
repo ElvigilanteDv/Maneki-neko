@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 const fs       = require('fs');
 const path     = require('path');
 const pino     = require('pino');
@@ -48,9 +49,9 @@ const SESSION_DIR    = path.join(process.cwd(), 'session', 'maneki-neko');
 const RUNTIME_DIR    = path.join(process.cwd(), 'runtime');
 const CONNECTED_FILE = path.join(RUNTIME_DIR, 'connected.json');
 
-const MAIN_OWNER        = '59177474230';
-const EXTRA_OWNER       = '59177474230';
-const LINKED_BOT_NUMBER = '59177474230';
+const MAIN_OWNER        = process.env.OWNER_NUMBER || '59177474230';
+const EXTRA_OWNER       = process.env.EXTRA_OWNER  || '59177474230';
+const LINKED_BOT_NUMBER = process.env.BOT_NUMBER   || '59177474230';
 
 const DEFAULT_SETTINGS = {
   prefix:           '.',
