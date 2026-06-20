@@ -1,10 +1,3 @@
-/**
- * ╔══════════════════════════════════════════════════════════════╗
- * ║         M A N E K I - N E K O   B O T                        ║
- * ║                   index.js — Núcleo principal                ║
- * ╚══════════════════════════════════════════════════════════════╝
- */
-
 'use strict';
 
 const fs       = require('fs');
@@ -237,7 +230,7 @@ function printCode(code) {
   console.log(cc('bold','byellow','║') + cc('bold','bwhite','  📱  PASOS PARA VINCULAR:                            ') + cc('bold','byellow','║'));
   console.log(cc('bold','byellow','║') + c('bcyan','     1.  Abre WhatsApp en tu teléfono                ') + cc('bold','byellow','║'));
   console.log(cc('bold','byellow','║') + c('bcyan','     2.  Ve a Ajustes → Dispositivos vinculados       ') + cc('bold','byellow','║'));
-  console.log(cc('bold','byellow','║') + c('bcyan','     3.  Toca \"Vincular con número de teléfono\"       ') + cc('bold','byellow','║'));
+  console.log(cc('bold','byellow','║') + c('bcyan','     3.  Toca "Vincular con número de teléfono"       ') + cc('bold','byellow','║'));
   console.log(cc('bold','byellow','║') + c('bcyan','     4.  Ingresa exactamente el código de arriba      ') + cc('bold','byellow','║'));
   console.log(cc('bold','byellow','║') + c('bmagenta','  ⏱️   Tienes ~60 segundos para ingresarlo            ') + cc('bold','byellow','║'));
   console.log(cc('bold','byellow','╚══════════════════════════════════════════════════════╝'));
@@ -568,34 +561,27 @@ function findParticipant(participants = [], jid = '') {
   const jidStr = String(jid || '').trim();
   if (!jidStr) return undefined;
 
-  // Número puro (sin @, sin :device)
   const jidNum = jidStr.split('@')[0].split(':')[0].replace(/\D/g, '');
-  // Base sin sufijo de dispositivo
   const jidBaseClean = jidStr.split('@')[0].split(':')[0];
 
   return participants.find((p) => {
     const pId = String(p.id || '').trim();
     if (!pId) return false;
 
-    // 1. Exacto
     if (pId === jidStr) return true;
 
     const pBase      = pId.split('@')[0];
     const pNum       = pBase.split(':')[0].replace(/\D/g, '');
     const pBaseClean = pBase.split(':')[0];
 
-    // 2. Número puro igual (cubre @s.whatsapp.net vs @lid vs :device)
     if (jidNum && pNum && jidNum === pNum) return true;
 
-    // 3. Base sin device igual
     if (jidBaseClean && pBaseClean && jidBaseClean === pBaseClean) return true;
 
     return false;
   });
 }
 
-// ─── Helper robusto para saber si un JID es admin del grupo ──────────────────
-// Soporta grupos con LID (nuevo sistema WhatsApp) y grupos normales
 function isGroupAdmin(participants = [], jid = '', lidJid = '') {
   const jidNum = String(jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
 
@@ -603,25 +589,19 @@ function isGroupAdmin(participants = [], jid = '', lidJid = '') {
     const pId  = String(p.id || '');
     const pNum = pId.split('@')[0].split(':')[0].replace(/\D/g, '');
 
-    // Caso 1: coincide por JID/número directo (grupos sin LID)
     if (pId === jid) return Boolean(p.admin);
     if (jidNum && pNum && jidNum === pNum) return Boolean(p.admin);
 
-    // Caso 2: el participante tiene phoneNumber guardado (Baileys a veces lo incluye)
     if (p.phoneNumber) {
       const pPhone = String(p.phoneNumber).replace(/\D/g, '');
       if (jidNum && pPhone && jidNum === pPhone) return Boolean(p.admin);
     }
 
-    // Caso 3: coincide por LID directo
     if (lidJid && pId === String(lidJid)) return Boolean(p.admin);
   }
   return false;
 }
 
-// ─── Obtener LID del sender desde la lista de participantes ──────────────────
-// En grupos con LID, los admins solo aparecen con @lid, no con número.
-// Esta función busca al sender por número y devuelve su entrada en participants.
 function getParticipantEntry(participants = [], jid = '') {
   const jidNum = String(jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
   return participants.find((p) => {
@@ -725,15 +705,11 @@ function scheduleReconnect(ms = null) {
 //  INICIO DEL BOT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Verificación de admin compatible con LID (nuevo sistema WhatsApp) ─────────
-// En grupos modernos los participantes aparecen como @lid, no como @s.whatsapp.net
-// Esta función intenta todas las formas posibles de identificar si el sender es admin
 async function checkIsGroupAdmin(sock, groupId, senderJid, metadata = null) {
   try {
     const parts = metadata?.participants || [];
     const senderNum = String(senderJid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
 
-    // ── Caso 1: grupo sin LID (participantes con @s.whatsapp.net) ────────────
     const byJid = parts.find(p => {
       const pId  = String(p.id || '');
       const pNum = pId.split('@')[0].split(':')[0].replace(/\D/g, '');
@@ -741,43 +717,30 @@ async function checkIsGroupAdmin(sock, groupId, senderJid, metadata = null) {
     });
     if (byJid) return Boolean(byJid.admin);
 
-    // ── Caso 2: grupo con LID (participantes con @lid) ────────────────────────
-    // Obtener metadata completa con jidMap si el fork lo soporta
     let fullMeta = metadata;
     try { fullMeta = await sock.groupMetadata(groupId); } catch {}
 
     const fullParts = fullMeta?.participants || [];
 
-    // El fork puede guardar el mapeo lid<->jid en participant.lidJid o participant.jid
     const byLidField = fullParts.find(p => {
-      // Algunos forks guardan el JID real en p.jid o p.lidJid
       const pJid    = String(p.jid || p.lidJid || p.userJid || '');
       const pJidNum = pJid.split('@')[0].split(':')[0].replace(/\D/g, '');
       if (pJid && senderNum && pJidNum === senderNum) return true;
-      // También verificar phoneNumber
       const pPhone  = String(p.phoneNumber || p.phone || '').replace(/\D/g, '');
       if (pPhone && senderNum && pPhone === senderNum) return true;
       return false;
     });
     if (byLidField) return Boolean(byLidField.admin);
 
-    // ── Caso 3: verificar si todos los admins son @lid ────────────────────────
-    // Si el grupo usa LID para TODOS los participantes, ningún número va a coincidir.
-    // En ese caso, si el sender está en ownerNumbers lo tratamos como admin de confianza
-    // (el owner ya se verifica antes, esto es fallback para admins del grupo)
     const allAreLid = fullParts.length > 0 && fullParts.every(p => String(p.id || '').endsWith('@lid'));
     if (allAreLid) {
-      // Intentar resolver el LID del sender via store de contactos
       try {
-        // El fork a veces expone sock.store o sock.contacts
         const store    = sock.store || sock.authState?.store;
         const contacts = store?.contacts || sock.contacts || {};
-        // Buscar por número en contactos
         for (const [lidKey, contact] of Object.entries(contacts)) {
           const cNum = String(contact?.id || contact?.jid || lidKey || '')
             .split('@')[0].split(':')[0].replace(/\D/g, '');
           if (senderNum && cNum && cNum === senderNum) {
-            // Tenemos el LID de este contacto
             const lidId = String(lidKey).includes('@') ? lidKey : `${lidKey}@lid`;
             const byStoreLid = fullParts.find(p => String(p.id || '') === lidId);
             if (byStoreLid) return Boolean(byStoreLid.admin);
@@ -818,12 +781,10 @@ async function startBot() {
       isRegistered ? 'green' : 'yellow'
     );
 
-    // ── Decidir modo de vinculación ───────────────────────────────────────────
     let selectedPhone = '';
     let isCodeMode    = false;
 
     if (!isRegistered) {
-      // Verificar cooldown 405 activo
       if (isPairingCooldown()) {
         const waitMin = Math.ceil((pairingCooldownUntil - Date.now()) / 60000);
         log('PAIRING', c('bred', `Cooldown 405 activo. Espera aprox ${waitMin} min o usa modo QR.`), 'red');
@@ -831,14 +792,12 @@ async function startBot() {
           log('PAIRING', c('byellow', 'Modo QR activo por cooldown 405. Escanea el QR cuando aparezca.'), 'yellow');
           pairingMode = 'qr';
         } else {
-          // Aún cooldown pero sin fallback QR todavía: esperar y reintentar
           booting = false;
           scheduleReconnect(Math.max(30_000, pairingCooldownUntil - Date.now()));
           return;
         }
       }
 
-      // Si ya hay modo guardado en settings, respetarlo
       const savedMode  = String(settings.pairingMode || '').trim().toLowerCase();
       const savedPhone = normalizePhone(settings.phoneNumber || '');
 
@@ -848,7 +807,6 @@ async function startBot() {
       } else if (savedMode === 'qr') {
         pairingMode = 'qr';
       } else {
-        // Sin modo guardado: menú interactivo
         const result = await choosePairingMode();
         pairingMode   = result.mode;
         selectedPhone = result.phone;
@@ -857,7 +815,6 @@ async function startBot() {
       isCodeMode = pairingMode === 'code' && !isPairingQrFallback();
     }
 
-    // ── Versión de Baileys ────────────────────────────────────────────────────
     let version = [2, 3000, 1027934701];
     try {
       const data = await fetchLatestBaileysVersion();
@@ -870,7 +827,6 @@ async function startBot() {
       ? ['Ubuntu', 'Chrome', '20.0.04']
       : ['Windows', 'Chrome', '114.0.5735.198'];
 
-    // ── Construir auth con signal store cacheado si está disponible ───────────
     let authConfig = state;
     if (typeof makeCacheableSignalKeyStore === 'function') {
       authConfig = {
@@ -894,7 +850,6 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // ── Solicitar código de vinculación ───────────────────────────────────────
     if (isCodeMode && !pairingRequested && !isRegistered && selectedPhone) {
       await delay(3000);
       if (token !== socketToken) return;
@@ -916,11 +871,9 @@ async function startBot() {
         log('CODE', `Error definitivo: ${c('bred', String(e?.message || e).slice(0, 80))}`, 'red');
 
         if (is405) {
-          // No limpiar auth en 405, solo cambiar a QR
           log('CODE', c('byellow', 'Cambiando a modo QR por cooldown 405...'), 'yellow');
           saveSettings({ pairingMode: 'qr', phoneNumber: '' });
           pairingMode = 'qr';
-          // Reconectar para mostrar QR
           if (token === socketToken) {
             booting = false;
             scheduleReconnect(3000);
@@ -941,13 +894,11 @@ async function startBot() {
       }
     }
 
-    // ── connection.update ─────────────────────────────────────────────────────
     sock.ev.on('connection.update', async (update) => {
       if (token !== socketToken) return;
 
       const { connection, lastDisconnect, qr } = update;
 
-      // QR recibido
       if (qr && !isCodeMode && !isRegistered) {
         if (isPairingQrFallback()) {
           log('QR', c('byellow', 'Modo QR activo por cooldown 405. Escanea el código QR de arriba.'), 'yellow');
@@ -1029,82 +980,81 @@ async function startBot() {
       }
     });
 
-    // ── group-participants.update — Bienvenida / Despedida ───────────────────
-sock.ev.on('group-participants.update', async (update) => {
-  if (token !== socketToken) return;
+    sock.ev.on('group-participants.update', async (update) => {
+      if (token !== socketToken) return;
 
-  const { id: groupId, participants, action } = update;
-  if (!groupId || !participants?.length) return;
-  if (!['add', 'remove', 'leave'].includes(action)) return;
+      const { id: groupId, participants, action } = update;
+      if (!groupId || !participants?.length) return;
+      if (!['add', 'remove', 'leave'].includes(action)) return;
 
-  const groupOpts = getGroupOptions(groupId);
-  const isBienvenida = action === 'add' && groupOpts.bienvenida;
-  const isDespdida   = (action === 'remove' || action === 'leave') && groupOpts.despedida;
-  if (!isBienvenida && !isDespdida) return;
+      const groupOpts = getGroupOptions(groupId);
+      const isBienvenida = action === 'add' && groupOpts.bienvenida;
+      const isDespdida   = (action === 'remove' || action === 'leave') && groupOpts.despedida;
+      if (!isBienvenida && !isDespdida) return;
 
-  let metadata   = null;
-  let groupName  = 'el grupo';
-  let groupImage = null;
+      let metadata   = null;
+      let groupName  = 'el grupo';
+      let groupImage = null;
 
-  try {
-    metadata  = await sock.groupMetadata(groupId);
-    groupName = metadata?.subject || 'el grupo';
-  } catch {}
-
-  try {
-    const ppUrl = await sock.profilePictureUrl(groupId, 'image');
-    if (ppUrl) {
-      const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
-      groupImage = Buffer.from(resp.data);
-    }
-  } catch {}
-
-  for (const participant of participants) {
-    let userJid = participant;
-    let userNum = normalizeNumber(participant);
-    
-    if (!userNum && participant.includes('@lid')) {
       try {
-        const store = sock.store || sock.authState?.store;
-        const contacts = store?.contacts || sock.contacts || {};
-        for (const [lidKey, contact] of Object.entries(contacts)) {
-          const cId = String(contact?.id || contact?.jid || lidKey || '');
-          if (cId === participant || cId.split('@')[0] === participant.split('@')[0]) {
-            const cNum = String(contact?.phoneNumber || contact?.phone || contact?.id || '')
-              .split('@')[0].split(':')[0].replace(/\D/g, '');
-            if (cNum) {
-              userNum = cNum;
-              userJid = `${cNum}@s.whatsapp.net`;
-              break;
+        metadata  = await sock.groupMetadata(groupId);
+        groupName = metadata?.subject || 'el grupo';
+      } catch {}
+
+      try {
+        const ppUrl = await sock.profilePictureUrl(groupId, 'image');
+        if (ppUrl) {
+          const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
+          groupImage = Buffer.from(resp.data);
+        }
+      } catch {}
+
+      for (const participant of participants) {
+        let userJid = participant;
+        let userNum = normalizeNumber(participant);
+
+        if (!userNum && participant.includes('@lid')) {
+          try {
+            const store = sock.store || sock.authState?.store;
+            const contacts = store?.contacts || sock.contacts || {};
+            for (const [lidKey, contact] of Object.entries(contacts)) {
+              const cId = String(contact?.id || contact?.jid || lidKey || '');
+              if (cId === participant || cId.split('@')[0] === participant.split('@')[0]) {
+                const cNum = String(contact?.phoneNumber || contact?.phone || contact?.id || '')
+                  .split('@')[0].split(':')[0].replace(/\D/g, '');
+                if (cNum) {
+                  userNum = cNum;
+                  userJid = `${cNum}@s.whatsapp.net`;
+                  break;
+                }
+              }
             }
-          }
+          } catch {}
         }
-      } catch {}
-    }
 
-    if (!userNum) {
-      try {
-        const contact = await sock.onWhatsApp(participant);
-        if (contact && contact.length > 0 && contact[0].jid) {
-          const cNum = normalizeNumber(contact[0].jid);
-          if (cNum) {
-            userNum = cNum;
-            userJid = contact[0].jid;
-          }
+        if (!userNum) {
+          try {
+            const contact = await sock.onWhatsApp(participant);
+            if (contact && contact.length > 0 && contact[0].jid) {
+              const cNum = normalizeNumber(contact[0].jid);
+              if (cNum) {
+                userNum = cNum;
+                userJid = contact[0].jid;
+              }
+            }
+          } catch {}
         }
-      } catch {}
-    }
 
-    if (!userNum) {
-      userJid = participant;
-      userNum = participant.split('@')[0].replace(/\D/g, '');
-    }
+        if (!userNum) {
+          userJid = participant;
+          userNum = participant.split('@')[0].replace(/\D/g, '');
+        }
 
-    const displayName = await resolveParticipantName(sock, userJid, metadata);
-    const mention = `@${userNum}`;
+        const displayName = await resolveParticipantName(sock, userJid, metadata);
+        const mention = `@${userNum}`;
 
-    if (isBienvenida) {
-      const caption =
+        if (isBienvenida) {
+          const caption =
 `╭━━━〔 🐾 *BIENVENIDA* 〕━━━⬣
 
 👤 *¡Hola, ${displayName}!*
@@ -1122,18 +1072,18 @@ sock.ev.on('group-participants.update', async (update) => {
 ━━━━━━━━━━━━━━━━━━
 💙 *MANEKI-NEKO BOT*`;
 
-      try {
-        if (groupImage) {
-          await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
-        } else {
-          await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
-        }
-      } catch (e) {
-        log('ERR', `Bienvenida error: ${e?.message || e}`, 'red');
-      }
+          try {
+            if (groupImage) {
+              await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
+            } else {
+              await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
+            }
+          } catch (e) {
+            log('ERR', `Bienvenida error: ${e?.message || e}`, 'red');
+          }
 
-    } else if (isDespdida) {
-      const caption =
+        } else if (isDespdida) {
+          const caption =
 `╭━━━〔 👋 *DESPEDIDA* 〕━━━⬣
 
 😢 *${displayName} ha salido*
@@ -1147,18 +1097,18 @@ sock.ev.on('group-participants.update', async (update) => {
 ━━━━━━━━━━━━━━━━━━
 💙 *MANEKI-NEKO BOT*`;
 
-      try {
-        if (groupImage) {
-          await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
-        } else {
-          await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
+          try {
+            if (groupImage) {
+              await sock.sendMessage(groupId, { image: groupImage, caption, mentions: [userJid] });
+            } else {
+              await sock.sendMessage(groupId, { text: caption, mentions: [userJid] });
+            }
+          } catch (e) {
+            log('ERR', `Despedida error: ${e?.message || e}`, 'red');
+          }
         }
-      } catch (e) {
-        log('ERR', `Despedida error: ${e?.message || e}`, 'red');
       }
-    }
-  }
-});
+    });
 
     // ── messages.upsert ──────────────────────────────────────────────────────
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
@@ -1170,7 +1120,6 @@ sock.ev.on('group-participants.update', async (update) => {
 
       const from      = m.key.remoteJid;
       const sender    = m.key.participant || from;
-      // LID del sender (nuevo sistema WhatsApp — admins aparecen como @lid)
       const senderLid = m.key.participantLid || m.key?.['participantLid'] ||
                         m.message?.senderKeyDistributionMessage?.participantLid ||
                         m.participant?.lid || m?.participantLid || '';
@@ -1275,6 +1224,11 @@ sock.ev.on('group-participants.update', async (update) => {
       const place         = isGroup ? 'GRUPO' : 'PRIVADO';
       const senderNum     = normalizeNumber(sender) || '???';
       const senderIsOwner = isOwner(sender);
+
+      // ── Bot apagado en este grupo (excepto owner y el propio comando .bot) ──
+      if (isGroup && groupOpts.botOff && !senderIsOwner && commandName !== 'bot') {
+        return;
+      }
 
       log('CMD', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
 
