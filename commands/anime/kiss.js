@@ -1,7 +1,7 @@
 module.exports = {
   command: ['kiss', 'beso'],
   description: 'Le da un beso a la persona mencionada',
-  categoria: 'general',
+  categoria: 'anime',
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const settings = ctx?.settings || {};
