@@ -1,3 +1,83 @@
+'use strict';
+
+const fs   = require('fs');
+const path = require('path');
+const os   = require('os');
+const { execFileSync } = require('child_process');
+
+// ─── Carpeta temporal única por conversión ─────────────────────────────────────
+function makeTempDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'maneki-sticker-'));
+  return dir;
+}
+
+// ─── Obtiene el mensaje actual o el citado (quoted), el que tenga media ───────
+function getQuotedOrCurrentMessage(m) {
+  const msg = m?.message || {};
+
+  if (msg.imageMessage || msg.videoMessage || msg.stickerMessage) {
+    return m;
+  }
+
+  const quoted = msg.extendedTextMessage?.contextInfo?.quotedMessage;
+  if (quoted && (quoted.imageMessage || quoted.videoMessage || quoted.stickerMessage)) {
+    const stanzaId   = msg.extendedTextMessage.contextInfo.stanzaId;
+    const participant = msg.extendedTextMessage.contextInfo.participant;
+    return {
+      key: {
+        remoteJid: m.key?.remoteJid,
+        id: stanzaId,
+        participant,
+        fromMe: false,
+      },
+      message: quoted,
+    };
+  }
+
+  // Sin media válida: devolvemos el mensaje original tal cual,
+  // para que getMimeType detecte que no hay imagen/video.
+  return m;
+}
+
+// ─── Detecta el mimetype del mensaje objetivo ─────────────────────────────────
+function getMimeType(getContentType, target) {
+  try {
+    const msg = target?.message || {};
+
+    if (msg.imageMessage)   return msg.imageMessage.mimetype   || 'image/jpeg';
+    if (msg.videoMessage)   return msg.videoMessage.mimetype   || 'video/mp4';
+    if (msg.stickerMessage) return msg.stickerMessage.mimetype || 'image/webp';
+
+    if (typeof getContentType === 'function') {
+      const type = getContentType(msg);
+      if (type === 'imageMessage') return msg.imageMessage?.mimetype || 'image/jpeg';
+      if (type === 'videoMessage') return msg.videoMessage?.mimetype || 'video/mp4';
+      if (type === 'stickerMessage') return msg.stickerMessage?.mimetype || 'image/webp';
+    }
+  } catch {}
+  return '';
+}
+
+// ─── Descarga el buffer del media del mensaje objetivo ────────────────────────
+async function downloadMediaBuffer(ctx, client, m) {
+  const target = getQuotedOrCurrentMessage(m);
+  const downloadMediaMessage = ctx?.downloadMediaMessage;
+
+  if (typeof downloadMediaMessage === 'function') {
+    const buffer = await downloadMediaMessage(target, 'buffer', {});
+    if (Buffer.isBuffer(buffer) && buffer.length) return buffer;
+  }
+
+  // Fallback: importar directo desde el fork de Baileys
+  const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
+  const buffer = await dlMedia(target, 'buffer', {});
+  if (!Buffer.isBuffer(buffer) || !buffer.length) {
+    throw new Error('No se pudo descargar el archivo multimedia');
+  }
+  return buffer;
+}
+
+// ─── Convierte un buffer de imagen/video a sticker WEBP ───────────────────────
 function ffmpegToWebp(inputBuffer, { inputExt = 'bin', video = false } = {}) {
   const tempDir = makeTempDir();
   const inputFile = path.join(tempDir, `input.${inputExt}`);
@@ -47,3 +127,11 @@ function ffmpegToWebp(inputBuffer, { inputExt = 'bin', video = false } = {}) {
     } catch {}
   }
 }
+
+module.exports = {
+  makeTempDir,
+  getQuotedOrCurrentMessage,
+  getMimeType,
+  downloadMediaBuffer,
+  ffmpegToWebp,
+};
