@@ -46,4 +46,4 @@ function ffmpegToWebp(inputBuffer, { inputExt = 'bin', video = false } = {}) {
       });
     } catch {}
   }
-                              }
+}
