@@ -1,121 +1,94 @@
-const fs   = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-
-const TEMP_DIR = path.join(process.cwd(), 'tmp');
-if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
-
-function deleteFileSafe(fp) {
-  try { if (fp && fs.existsSync(fp)) fs.unlinkSync(fp); } catch {}
-}
-
-function getMediaFromMessage(m) {
-  const msg = m.message || {};
-
-  if (msg.imageMessage) return { type: 'image', msg: msg.imageMessage };
-  if (msg.videoMessage) return { type: 'video', msg: msg.videoMessage };
-  if (msg.stickerMessage) return { type: 'sticker', msg: msg.stickerMessage };
-
-  const quoted = msg.extendedTextMessage?.contextInfo?.quotedMessage || {};
-  if (quoted.imageMessage) return { type: 'image', msg: quoted.imageMessage };
-  if (quoted.videoMessage) return { type: 'video', msg: quoted.videoMessage };
-  if (quoted.stickerMessage) return { type: 'sticker', msg: quoted.stickerMessage };
-
-  return null;
-}
-
-function convertToSticker(inputPath, outputPath, animated = false) {
-  return new Promise((resolve, reject) => {
-    const filters = 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2';
-    const args = animated
-      ? ['-y', '-i', inputPath, '-vf', filters, '-t', '00:00:10', '-loop', '0', '-preset', 'default', '-an', '-vsync', '0', outputPath]
-      : ['-y', '-i', inputPath, '-vf', filters, '-preset', 'default', '-an', outputPath];
-
-    const ff = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
-    ff.on('error', reject);
-    ff.on('close', code => {
-      if (code === 0) resolve(true);
-      else reject(new Error(`ffmpeg salió con código ${code}`));
-    });
-  });
-}
+const {
+  downloadMediaBuffer,
+  ffmpegToWebp,
+  getMimeType,
+  getQuotedOrCurrentMessage,
+} = require('../../utils/mediaTools');
 
 module.exports = {
-  command: ['sticker', 's', 'stiker'],
+  command: ['s', 'sticker', 'stiker', 's'],
   description: 'Convierte una imagen o video en sticker',
-  categoria: 'herramientas',
+  categoria: 'anime',
 
-  run: async (client, m, args, from, isOwner, ctx = {}) => {
-    const prefix = ctx?.prefix || '.';
-    const downloadMediaMessage = ctx?.downloadMediaMessage;
+  run: async (client, m, args, from, isCreator, ctx = {}) => {
+    const target = getQuotedOrCurrentMessage(m);
+    const mime = getMimeType(ctx.getContentType, target);
 
-    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
-    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
+    const isImage = mime.startsWith('image/');
+    const isVideo = mime.startsWith('video/');
 
-    const media = getMediaFromMessage(m);
+    if (!isImage && !isVideo) {
+      return client.sendMessage(
+        from,
+        {
+          text: `╭━━━〔 🎟️ STICKER 〕━━━⬣
 
-    if (!media) {
-      await client.sendMessage(from, {
-        text:
-`${BORDER_TOP}
-       _Sticker Creator_
-${BORDER_BOTTOM}
+🐾 Usa este comando respondiendo una imagen o video.
 
-• Uso correcto:
-➜ Envía una imagen con ${prefix}sticker
-➜ Responde a una imagen con ${prefix}sticker
-➜ Responde a un video corto con ${prefix}sticker
+➜ Responde una foto y escribe *.s*
+➜ Responde un video corto y escribe *.s*
 
-• El sticker se generará automáticamente.`
-      }, { quoted: m });
-      return;
+🐈 También puedes enviar la imagen con el comando en el caption.`,
+        },
+        { quoted: m }
+      );
     }
 
-    if (media.type === 'video') {
-      const duration = media.msg?.seconds || 0;
-      if (duration > 10) {
-        await client.sendMessage(from, {
-          text: '❌ El video no puede durar más de 10 segundos para sticker.'
-        }, { quoted: m });
-        return;
+    if (isVideo) {
+      const seconds = Number(
+        target?.message?.videoMessage?.seconds || 0
+      );
+
+      if (seconds > 30) {
+        return client.sendMessage(
+          from,
+          {
+            text: '❌ El video es muy largo. Usa uno de máximo 30 segundos para sticker.',
+          },
+          { quoted: m }
+        );
       }
     }
-
-    await client.sendMessage(from, { text: '⏳ Convirtiendo...' }, { quoted: m });
-
-    const ext = media.type === 'video' ? 'mp4' : 'jpg';
-    const inputPath  = path.join(TEMP_DIR, `stk_in_${Date.now()}.${ext}`);
-    const outputPath = path.join(TEMP_DIR, `stk_out_${Date.now()}.webp`);
 
     try {
-      let buffer;
+      const media = await downloadMediaBuffer(ctx, client, m);
 
-      if (typeof downloadMediaMessage === 'function') {
-        buffer = await downloadMediaMessage(m, 'buffer', {});
-      } else {
-        const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
-        buffer = await dlMedia(m, 'buffer', {});
+      const webp = ffmpegToWebp(media, {
+        inputExt: isVideo ? 'mp4' : 'jpg',
+        video: isVideo,
+      });
+
+      console.log('Es Buffer:', Buffer.isBuffer(webp));
+      console.log('Bytes:', webp?.length);
+
+      if (!Buffer.isBuffer(webp) || !webp.length) {
+        throw new Error('No se pudo generar el sticker WEBP');
       }
 
-      if (!buffer || !buffer.length) throw new Error('No se pudo descargar el archivo');
+      await client.sendMessage(
+        from,
+        {
+          sticker: Buffer.from(webp),
+        },
+        {
+          quoted: m,
+        }
+      );
 
-      fs.writeFileSync(inputPath, buffer);
-
-      const animated = media.type === 'video';
-      await convertToSticker(inputPath, outputPath, animated);
-
-      if (!fs.existsSync(outputPath)) throw new Error('No se generó el sticker');
-
-      await client.sendMessage(from, {
-        sticker: fs.readFileSync(outputPath),
-      }, { quoted: m });
     } catch (e) {
-      await client.sendMessage(from, {
-        text: `❌ Error al crear el sticker.\n> ${e.message || 'Error desconocido'}`
-      }, { quoted: m });
-    } finally {
-      deleteFileSafe(inputPath);
-      deleteFileSafe(outputPath);
+      console.error(e);
+
+      await client.sendMessage(
+        from,
+        {
+          text: `❌ No pude crear el sticker.\n${String(
+            e?.message || e
+          ).slice(0, 180)}`,
+        },
+        {
+          quoted: m,
+        }
+      );
     }
   },
 };
