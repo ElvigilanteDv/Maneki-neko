@@ -150,9 +150,9 @@ module.exports = {
        _Update_
 ${BORDER_BOTTOM}
 
-❌ Git no está disponible en el servidor.
+✗ Git no está disponible en el servidor.
 
-• Instala git o actualiza manualmente.`
+➜ Instala git o actualiza manualmente.`
       }, { quoted: m });
     }
 
@@ -182,21 +182,21 @@ ${BORDER_BOTTOM}
             const commits = String(commitLog || '').split('\n').filter(Boolean);
 
             const previewFiles = [
-              ...added.slice(0, 3).map(f => `  • 🆕 ${f}`),
-              ...modified.slice(0, 3).map(f => `  • ✏️ ${f}`),
-              ...del.slice(0, 2).map(f => `  • 🗑️ ${f}`),
+              ...added.slice(0, 3).map(f => `  ➜ ${f}`),
+              ...modified.slice(0, 3).map(f => `  ➜ ${f}`),
+              ...del.slice(0, 2).map(f => `  ➜ ${f}`),
             ].join('\n') || '  (sin cambios)';
 
             const previewCommits = commits.slice(0, 3)
-              .map(c => `  • ${c}`)
+              .map(c => `  ➜ ${c}`)
               .join('\n') || '  (sin commits)';
 
             diffInfo =
 `
 
-• Archivos afectados: ${files}
-• Líneas agregadas: +${inserted}
-• Líneas eliminadas: -${deleted}
+➜ Archivos afectados: ${files}
+➜ Líneas agregadas: +${inserted}
+➜ Líneas eliminadas: -${deleted}
 
 Archivos que cambiarían:
 ${previewFiles}
@@ -216,19 +216,19 @@ ${previewCommits}`;
        _Update Check_
 ${BORDER_BOTTOM}
 
-${needsUpdate ? '🟡 Hay una actualización disponible' : '✅ El bot está actualizado'}
+${needsUpdate ? '➜ Hay una actualización disponible' : '✓ El bot está actualizado'}
 
-• Local: ${localHash}
-• GitHub: ${remoteHash}
-• Rama: ${REPO_BRANCH}
+➜ Local: ${localHash}
+➜ GitHub: ${remoteHash}
+➜ Rama: ${REPO_BRANCH}
 ${diffInfo}
 
-${needsUpdate ? '• Usa .update para aplicar la actualización.' : '• No hay nada nuevo.'}`
+${needsUpdate ? '➜ Usa .update para aplicar la actualización.' : '➜ No hay nada nuevo.'}`
         }, { quoted: m });
 
       } catch (e) {
         return client.sendMessage(from, {
-          text: `❌ Error al verificar: ${String(e?.message || e).slice(0, 100)}`
+          text: `✗ Error al verificar: ${String(e?.message || e).slice(0, 100)}`
         }, { quoted: m });
       }
     }
@@ -239,8 +239,8 @@ ${needsUpdate ? '• Usa .update para aplicar la actualización.' : '• No hay 
        _Actualizando Bot_
 ${BORDER_BOTTOM}
 
-⏳ Descargando última versión...
-• Rama: ${REPO_BRANCH}
+➜ Descargando última versión...
+➜ Rama: ${REPO_BRANCH}
 
 _Por favor espera._`
     }, { quoted: m });
@@ -251,42 +251,42 @@ _Por favor espera._`
       let pkgChanges = null;
 
       if (hasGit) {
-        updateLog.push('📡 Repositorio git encontrado.');
+        updateLog.push('Repositorio git encontrado.');
 
         const hashAntes = runCmdSync('git rev-parse HEAD', cwd);
 
         const backupDir = path.join(cwd, '__update_backup__');
         const backedUpSettings = backupFile(path.join(cwd, 'settings.json'), backupDir);
-        if (backedUpSettings) updateLog.push('📦 settings.json respaldado.');
+        if (backedUpSettings) updateLog.push('settings.json respaldado.');
 
         try {
           await runCmd(`git fetch origin ${REPO_BRANCH} --quiet`, cwd);
-          updateLog.push('📥 Repositorio remoto descargado.');
+          updateLog.push('Repositorio remoto descargado.');
 
           const hashRemoto = runCmdSync(`git rev-parse origin/${REPO_BRANCH}`, cwd);
           diffStats  = getDiffStats(cwd, hashAntes, hashRemoto);
           pkgChanges = getPackageChanges(cwd, hashAntes, hashRemoto);
 
           await runCmd(`git reset --hard origin/${REPO_BRANCH}`, cwd);
-          updateLog.push('♻️ Código sincronizado.');
+          updateLog.push('Código sincronizado.');
         } catch (e) {
-          updateLog.push(`⚠️ Git sync: ${String(e?.message || '').slice(0, 60)}`);
+          updateLog.push(`Git sync: ${String(e?.message || '').slice(0, 60)}`);
         }
 
         if (backedUpSettings) {
           restoreFile('settings.json', backupDir, cwd);
-          updateLog.push('♻️ settings.json restaurado.');
+          updateLog.push('settings.json restaurado.');
         }
 
         try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch {}
 
       } else {
-        updateLog.push('📡 Clonando repositorio...');
+        updateLog.push('Clonando repositorio...');
         const tmpDir = path.join(cwd, '__update_tmp__');
         try { execSync(`rm -rf "${tmpDir}"`); } catch {}
 
         await runCmd(`git clone --depth=1 --branch ${REPO_BRANCH} ${REPO_URL} "${tmpDir}"`, cwd);
-        updateLog.push('✅ Clon descargado.');
+        updateLog.push('Clon descargado.');
 
         const entries = fs.readdirSync(tmpDir);
         let copied = 0;
@@ -299,19 +299,19 @@ _Por favor espera._`
           } catch {}
         }
         try { execSync(`rm -rf "${tmpDir}"`); } catch {}
-        updateLog.push(`📁 ${copied} archivos copiados.`);
+        updateLog.push(`${copied} archivos copiados.`);
       }
 
       let npmOut = '';
       try {
         await client.sendMessage(from, {
-          text: '📦 Instalando dependencias...'
+          text: 'Instalando dependencias...'
         }, { quoted: m });
 
         npmOut = await runCmd('npm install --omit=dev 2>&1', cwd);
-        updateLog.push('📦 Dependencias instaladas.');
+        updateLog.push('Dependencias instaladas.');
       } catch (e) {
-        updateLog.push(`⚠️ npm install: ${String(e?.message || '').slice(0, 60)}`);
+        updateLog.push(`npm install: ${String(e?.message || '').slice(0, 60)}`);
       }
 
       let newHash = '???';
@@ -330,20 +330,20 @@ _Por favor espera._`
         const commits = String(commitLog || '').split('\n').filter(Boolean);
 
         const listaArchivos = [
-          ...added.slice(0, 3).map(f    => `  • 🆕 ${f}`),
-          ...modified.slice(0, 3).map(f => `  • ✏️ ${f}`),
-          ...del.slice(0, 2).map(f      => `  • 🗑️ ${f}`),
+          ...added.slice(0, 3).map(f    => `  ➜ ${f}`),
+          ...modified.slice(0, 3).map(f => `  ➜ ${f}`),
+          ...del.slice(0, 2).map(f      => `  ➜ ${f}`),
         ].join('\n');
 
         const listaCommits = commits.slice(0, 5)
-          .map(c => `  • ${c}`)
+          .map(c => `  ➜ ${c}`)
           .join('\n');
 
         resumenCambios += `
 
-• Archivos cambiados: ${files}
-• Líneas agregadas: +${inserted}
-• Líneas eliminadas: -${deleted}`;
+➜ Archivos cambiados: ${files}
+➜ Líneas agregadas: +${inserted}
+➜ Líneas eliminadas: -${deleted}`;
 
         if (listaArchivos) {
           resumenCambios += `
@@ -364,28 +364,29 @@ ${listaCommits}`;
         const { added: pkgAdd, removed: pkgRem, updated: pkgUpd } = pkgChanges;
         if (pkgAdd.length || pkgRem.length || pkgUpd.length) {
           resumenCambios += '\n\nCambios en dependencias:';
-          pkgAdd.slice(0, 4).forEach(p => { resumenCambios += `\n  • 🆕 ${p}`; });
-          pkgUpd.slice(0, 4).forEach(p => { resumenCambios += `\n  • 🔄 ${p}`; });
-          pkgRem.slice(0, 4).forEach(p => { resumenCambios += `\n  • 🗑️ ${p}`; });
+          pkgAdd.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
+          pkgUpd.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
+          pkgRem.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
         }
       }
 
-      const logText = updateLog.map(l => `• ${l}`).join('\n');
+      const logText = updateLog.map(l => `➜ ${l}`).join('\n');
 
       await client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       _¡Actualización Completa!_
+       _Actualización Completa_
 ${BORDER_BOTTOM}
 
-✅ Bot actualizado exitosamente
+✓ Bot actualizado exitosamente
 
 ${logText}
 
-• Versión: ${newHash}
-${resumenCambios || '\nSin cambios detectados.'}
+➜ Versión: ${newHash}
+${resumenCambios || '\n➜ Sin cambios detectados.'}
 
 ${BORDER_TOP}
+       _Reiniciando..._
 ${BORDER_BOTTOM}`
       }, { quoted: m });
 
@@ -398,11 +399,11 @@ ${BORDER_BOTTOM}`
        _Error en Update_
 ${BORDER_BOTTOM}
 
-❌ Falló la actualización
+✗ Falló la actualización
 
 ${String(e?.message || e).slice(0, 200)}
 
-• Posibles causas:
+➜ Posibles causas:
   ➜ Sin conexión a GitHub
   ➜ Repositorio privado
   ➜ Sin permisos de escritura
