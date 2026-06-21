@@ -39,11 +39,11 @@ module.exports = {
         target?.message?.videoMessage?.seconds || 0
       );
 
-      if (seconds > 30) {
+      if (seconds > 60) {
         return client.sendMessage(
           from,
           {
-            text: '❌ El video es muy largo. Usa uno de máximo 30 segundos para sticker.',
+            text: '❌ El video es muy largo. Usa uno de máximo 60 segundos para sticker.',
           },
           { quoted: m }
         );
