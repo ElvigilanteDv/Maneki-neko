@@ -9,7 +9,7 @@ module.exports = {
   run: async (sock, m, args, from, senderIsOwner) => {
     if (!args[0] || !args[1]) {
       return sock.sendMessage(from, {
-        text: '❌ *Error:* Debes proporcionar el número y la cantidad.\n\n*Ejemplo:* .report 5491122334455 10'
+        text: `❌ Error: Debes proporcionar el número y la cantidad.\n\nEjemplo: .report 5491122334455 10`
       }, { quoted: m });
     }
 
@@ -35,7 +35,6 @@ module.exports = {
 
     let browser;
     try {
-      // Lanzamos el navegador con la sesión guardada
       browser = await puppeteer.launch({
         userDataDir: './user_data',
         headless: true,
@@ -43,50 +42,50 @@ module.exports = {
       });
 
       const page = await browser.newPage();
-
-      // Establecer un User Agent común para evitar bloqueos básicos
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-      // Ir a la URL de WhatsApp Web con el número específico
       await page.goto(`https://web.whatsapp.com/send?phone=${phone}`, { waitUntil: 'networkidle2', timeout: 60000 });
-
-      // Esperamos a que la página cargue el chat
       await page.waitForSelector('[data-testid="chat-header"]', { timeout: 45000 });
 
       for (let i = 0; i < amount; i++) {
-        // 1. Hacer clic en el menú de perfil/opciones (tres puntos o cabecera)
+        // Abrir menú usando el header con data-testid
         await page.click('[data-testid="chat-header"]');
         await new Promise(r => setTimeout(r, 2000));
 
-        // 2. Buscar y hacer clic en el botón "Reportar"
+        // Buscar y hacer clic en "Reportar" usando diferentes selectores
         const reportClicked = await page.evaluate(() => {
-          const buttons = Array.from(document.querySelectorAll('div[role="button"]'));
-          const reportBtn = buttons.find(btn => {
-            const txt = btn.innerText;
-            return txt.includes('Report') || txt.includes('Reportar');
-          });
-          if (reportBtn) {
-            reportBtn.click();
-            return true;
+          const items = document.querySelectorAll('div[role="menuitem"], div[role="button"]');
+          for (const el of items) {
+            const txt = el.innerText || '';
+            if (txt.includes('Report') || txt.includes('Reportar')) {
+              el.click();
+              return true;
+            }
           }
           return false;
         });
 
-        if (!reportClicked) throw new Error('No se encontró el botón de Reportar.');
+        if (!reportClicked) {
+          // Intentar con selector alternativo
+          const clicked = await page.evaluate(() => {
+            const btn = document.querySelector('[aria-label*="Report" i], [aria-label*="Reportar" i]');
+            if (btn) { btn.click(); return true; }
+            return false;
+          });
+          if (!clicked) throw new Error('No se encontró el botón de Reportar.');
+        }
 
         await new Promise(r => setTimeout(r, 2000));
 
-        // 3. Confirmar el reporte
+        // Confirmar reporte
         const confirmClicked = await page.evaluate(() => {
-          const buttons = Array.from(document.querySelectorAll('div[role="button"]'));
-          // En el modal de confirmación, suele haber otro botón "Reportar"
-          const confirmBtn = buttons.find(btn => {
-            const txt = btn.innerText;
-            return txt.includes('Report') || txt.includes('Reportar');
-          });
-          if (confirmBtn) {
-            confirmBtn.click();
-            return true;
+          const btns = document.querySelectorAll('div[role="button"]');
+          for (const btn of btns) {
+            const txt = btn.innerText || '';
+            if (txt.includes('Report') || txt.includes('Reportar')) {
+              btn.click();
+              return true;
+            }
           }
           return false;
         });
@@ -95,7 +94,6 @@ module.exports = {
 
         await new Promise(r => setTimeout(r, 3000));
 
-        // Volver a cargar la página o navegar de nuevo para el siguiente reporte
         if (i < amount - 1) {
           await page.reload({ waitUntil: 'networkidle2' });
           await page.waitForSelector('[data-testid="chat-header"]', { timeout: 30000 });
@@ -105,16 +103,17 @@ module.exports = {
       await browser.close();
 
       const caption =
-`${BORDER_TOP} ʀᴇᴘᴏʀᴛᴇ ᴇxɪᴛᴏsᴏ ${BORDER_BOTTOM}
+`${BORDER_TOP}
+       _Reporte Exitoso_
+${BORDER_BOTTOM}
 
-『 ᴅᴇᴛᴀʟʟᴇs ᴅᴇʟ ʀᴇᴘᴏʀᴛᴇ 』
+➜ Número: ${phone}
+➜ Cantidad: ${amount} reportes procesados
 
-⊹ Número: ${phone}
-⊹ Cantidad: ${amount} reportes procesados
+✓ Completado vía Puppeteer.
 
-Estado: ✅ Completado vía Puppeteer.
-
-${BORDER_TOP} 🐾 El Vigilante ${BORDER_BOTTOM}`;
+${BORDER_TOP}
+${BORDER_BOTTOM}`;
 
       await sock.sendMessage(
         from,
