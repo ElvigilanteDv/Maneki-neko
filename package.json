@@ -8,8 +8,8 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "github:ElvigilanteDv/bails.git",
     "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "github:ElvigilanteDv/bails.git",
     "axios": "^1.9.0",
     "cheerio": "^1.0.0",
     "fluent-ffmpeg": "^2.1.2",
@@ -19,6 +19,7 @@
     "node-fetch": "^2.7.0",
     "node-webpmux": "^3.1.9",
     "pino": "^9.6.0",
+    "puppeteer": "^25.1.0",
     "qrcode-terminal": "^0.12.0",
     "xml2js": "^0.6.2"
   },
