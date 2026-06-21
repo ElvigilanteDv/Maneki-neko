@@ -17,8 +17,20 @@ module.exports = {
     const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
 
     try {
-      // Método de reporte de Baileys
-      await client.reportChat(target);
+      // Intentar diferentes métodos
+      if (typeof client.reportSpam === 'function') {
+        await client.reportSpam(target);
+      } else if (typeof client.sendReport === 'function') {
+        await client.sendReport(target);
+      } else if (typeof client.report === 'function') {
+        await client.report(target);
+      } else {
+        // Método universal
+        await client.sendMessage(target, {
+          text: 'report',
+          report: true
+        });
+      }
 
       await client.sendMessage(from, {
         text: `${BORDER_TOP}
