@@ -1,7 +1,7 @@
 module.exports = {
   command: ['ppt', 'foto', 'pfp'],
   description: 'Obtiene la foto de perfil de un usuario',
-  categoria: 'general',
+  categoria: 'grupos',
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const prefix = ctx?.prefix || '.';
