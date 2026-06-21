@@ -1,3 +1,19 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║         U P D A T E   —   M A N E K I - N E K O   B O T      ║
+ * ║  Descarga los archivos más recientes del repositorio GitHub  ║
+ * ║  y reemplaza los archivos del bot en el servidor.            ║
+ * ╚══════════════════════════════════════════════════════════════╝
+ *
+ * Uso:
+ *   .update          → descarga y aplica la última versión
+ *   .update check    → solo muestra si hay nueva versión (sin actualizar)
+ *
+ * Requiere: git instalado en el servidor
+ */
+
+'use strict';
+
 const { execSync, exec } = require('child_process');
 const path               = require('path');
 const fs                 = require('fs');
@@ -12,6 +28,11 @@ const PROTECTED = [
   'node_modules',
   '.env',
 ];
+
+const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
+const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 function runCmd(cmd, cwd) {
   return new Promise((resolve, reject) => {
@@ -52,6 +73,7 @@ function restoreFile(fileName, backupDir, cwd) {
   }
 }
 
+// ── Obtiene estadísticas detalladas del diff entre dos commits ────────────────
 function getDiffStats(cwd, fromHash, toHash) {
   try {
     const statRaw = runCmdSync(
@@ -129,6 +151,8 @@ function getPackageChanges(cwd, fromHash, toHash) {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+
 module.exports = {
   command: ['update', 'actualizar', 'upgrade'],
   description: 'Actualiza el bot desde el repositorio GitHub (solo owner)',
@@ -139,28 +163,29 @@ module.exports = {
     const soloCheck = String(args[0] || '').toLowerCase() === 'check';
     const cwd       = process.cwd();
 
-    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
-    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
-
+    // ── 1. Verificar que git esté disponible ─────────────────────────────────
     const gitVersion = runCmdSync('git --version');
     if (!gitVersion.includes('git')) {
       return client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       _Update_
+       ᴜᴘᴅᴀᴛᴇ — ᴇʀʀᴏʀ
 ${BORDER_BOTTOM}
 
-✗ Git no está disponible en el servidor.
+⊹ Git no está disponible en el servidor
+> Instala git o actualiza manualmente
 
-➜ Instala git o actualiza manualmente.`
+${BORDER_TOP}
+${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
     const hasGit = fs.existsSync(path.join(cwd, '.git'));
 
+    // ── 2. Modo CHECK ─────────────────────────────────────────────────────────
     if (soloCheck) {
       await client.sendMessage(from, {
-        text: `⏳ Verificando actualizaciones...`
+        text: `${BORDER_TOP}\n       ᴠᴇʀɪꜰɪᴄᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
       }, { quoted: m });
 
       try {
@@ -182,26 +207,28 @@ ${BORDER_BOTTOM}
             const commits = String(commitLog || '').split('\n').filter(Boolean);
 
             const previewFiles = [
-              ...added.slice(0, 3).map(f => `  ➜ ${f}`),
-              ...modified.slice(0, 3).map(f => `  ➜ ${f}`),
-              ...del.slice(0, 2).map(f => `  ➜ ${f}`),
-            ].join('\n') || '  (sin cambios)';
+              ...added.slice(0, 3).map(f => `   › ${f}`),
+              ...modified.slice(0, 3).map(f => `   › ${f}`),
+              ...del.slice(0, 2).map(f => `   › ${f}`),
+            ].join('\n') || '   (sin cambios)';
 
             const previewCommits = commits.slice(0, 3)
-              .map(c => `  ➜ ${c}`)
-              .join('\n') || '  (sin commits)';
+              .map(cm => `   › ${cm}`)
+              .join('\n') || '   (sin commits nuevos)';
 
             diffInfo =
 `
 
-➜ Archivos afectados: ${files}
-➜ Líneas agregadas: +${inserted}
-➜ Líneas eliminadas: -${deleted}
+⊹ Archivos afectados: ${files}
+⊹ Líneas agregadas: +${inserted}
+⊹ Líneas eliminadas: -${deleted}
 
-Archivos que cambiarían:
+【 ᴀʀᴄʜɪᴠᴏꜱ ꞉ ᴄᴀᴍʙɪᴀʀíᴀɴ 】
+
 ${previewFiles}
 
-Commits nuevos:
+【 ᴄᴏᴍᴍɪᴛꜱ ɴᴜᴇᴠᴏꜱ 】
+
 ${previewCommits}`;
           }
         } else {
@@ -213,41 +240,46 @@ ${previewCommits}`;
         return client.sendMessage(from, {
           text:
 `${BORDER_TOP}
-       _Update Check_
+       ᴜᴘᴅᴀᴛᴇ ᴄʜᴇᴄᴋ
 ${BORDER_BOTTOM}
 
-${needsUpdate ? '➜ Hay una actualización disponible' : '✓ El bot está actualizado'}
+⊹ ${needsUpdate ? 'Hay una actualización disponible' : 'El bot está actualizado'}
 
-➜ Local: ${localHash}
-➜ GitHub: ${remoteHash}
-➜ Rama: ${REPO_BRANCH}
+⊹ Local: ${localHash}
+⊹ GitHub: ${remoteHash}
+⊹ Rama: ${REPO_BRANCH}
 ${diffInfo}
 
-${needsUpdate ? '➜ Usa .update para aplicar la actualización.' : '➜ No hay nada nuevo.'}`
+⊹ ${needsUpdate ? `Usa ${ctx?.prefix || '.'}update para aplicar` : 'No hay nada nuevo por ahora'}
+
+${BORDER_TOP}
+       🐾 El Vigilante
+${BORDER_BOTTOM}`
         }, { quoted: m });
 
       } catch (e) {
         return client.sendMessage(from, {
-          text: `✗ Error al verificar: ${String(e?.message || e).slice(0, 100)}`
+          text: `❌ Error al verificar: ${String(e?.message || e).slice(0, 100)}`
         }, { quoted: m });
       }
     }
 
+    // ── 3. Modo UPDATE ────────────────────────────────────────────────────────
     await client.sendMessage(from, {
       text:
 `${BORDER_TOP}
-       _Actualizando Bot_
+       ⏳ ᴀᴄᴛᴜᴀʟɪᴢᴀɴᴅᴏ...
 ${BORDER_BOTTOM}
 
-➜ Descargando última versión...
-➜ Rama: ${REPO_BRANCH}
+⊹ Descargando última versión...
+⊹ Rama: ${REPO_BRANCH}
 
-_Por favor espera._`
+> Por favor espera, no apagues el bot`
     }, { quoted: m });
 
     try {
-      let updateLog = [];
-      let diffStats = null;
+      let updateLog  = [];
+      let diffStats  = null;
       let pkgChanges = null;
 
       if (hasGit) {
@@ -268,7 +300,7 @@ _Por favor espera._`
           pkgChanges = getPackageChanges(cwd, hashAntes, hashRemoto);
 
           await runCmd(`git reset --hard origin/${REPO_BRANCH}`, cwd);
-          updateLog.push('Código sincronizado.');
+          updateLog.push(`Código sincronizado con origin/${REPO_BRANCH}.`);
         } catch (e) {
           updateLog.push(`Git sync: ${String(e?.message || '').slice(0, 60)}`);
         }
@@ -299,21 +331,22 @@ _Por favor espera._`
           } catch {}
         }
         try { execSync(`rm -rf "${tmpDir}"`); } catch {}
-        updateLog.push(`${copied} archivos copiados.`);
+        updateLog.push(`${copied} archivos/carpetas copiados.`);
       }
 
-      let npmOut = '';
+      // ── npm install ───────────────────────────────────────────────────────
       try {
         await client.sendMessage(from, {
-          text: 'Instalando dependencias...'
+          text: `${BORDER_TOP}\n       📦 ɪɴꜱᴛᴀʟᴀɴᴅᴏ...\n${BORDER_BOTTOM}`
         }, { quoted: m });
 
-        npmOut = await runCmd('npm install --omit=dev 2>&1', cwd);
+        await runCmd('npm install --omit=dev 2>&1', cwd);
         updateLog.push('Dependencias instaladas.');
       } catch (e) {
         updateLog.push(`npm install: ${String(e?.message || '').slice(0, 60)}`);
       }
 
+      // ── Hash nuevo ────────────────────────────────────────────────────────
       let newHash = '???';
       try {
         if (fs.existsSync(path.join(cwd, '.git'))) {
@@ -321,6 +354,7 @@ _Por favor espera._`
         }
       } catch {}
 
+      // ── Construir resumen detallado ───────────────────────────────────────
       let resumenCambios = '';
 
       if (diffStats) {
@@ -330,63 +364,74 @@ _Por favor espera._`
         const commits = String(commitLog || '').split('\n').filter(Boolean);
 
         const listaArchivos = [
-          ...added.slice(0, 3).map(f    => `  ➜ ${f}`),
-          ...modified.slice(0, 3).map(f => `  ➜ ${f}`),
-          ...del.slice(0, 2).map(f      => `  ➜ ${f}`),
+          ...added.slice(0, 3).map(f    => `   › ${f}`),
+          ...modified.slice(0, 3).map(f => `   › ${f}`),
+          ...del.slice(0, 2).map(f      => `   › ${f}`),
         ].join('\n');
 
         const listaCommits = commits.slice(0, 5)
-          .map(c => `  ➜ ${c}`)
+          .map(cm => `   › ${cm}`)
           .join('\n');
 
         resumenCambios += `
 
-➜ Archivos cambiados: ${files}
-➜ Líneas agregadas: +${inserted}
-➜ Líneas eliminadas: -${deleted}`;
+⊹ Archivos cambiados: ${files}
+⊹ Líneas agregadas: +${inserted}
+⊹ Líneas eliminadas: -${deleted}`;
 
         if (listaArchivos) {
           resumenCambios += `
 
-Archivos modificados:
-${listaArchivos}`;
+【 ᴀʀᴄʜɪᴠᴏꜱ ᴍᴏᴅɪꜰɪᴄᴀᴅᴏꜱ 】
+
+${listaArchivos}${
+  (added.length + modified.length + del.length) > 8
+    ? `\n   › ...y ${(added.length + modified.length + del.length) - 8} más`
+    : ''
+}`;
         }
 
         if (listaCommits) {
           resumenCambios += `
 
-Commits aplicados:
-${listaCommits}`;
+【 ᴄᴏᴍᴍɪᴛꜱ ᴀᴘʟɪᴄᴀᴅᴏꜱ 】
+
+${listaCommits}${
+  commits.length > 5 ? `\n   › ...y ${commits.length - 5} más` : ''
+}`;
         }
       }
 
       if (pkgChanges) {
         const { added: pkgAdd, removed: pkgRem, updated: pkgUpd } = pkgChanges;
         if (pkgAdd.length || pkgRem.length || pkgUpd.length) {
-          resumenCambios += '\n\nCambios en dependencias:';
-          pkgAdd.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
-          pkgUpd.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
-          pkgRem.slice(0, 4).forEach(p => { resumenCambios += `\n  ➜ ${p}`; });
+          resumenCambios += '\n\n【 ᴅᴇᴘᴇɴᴅᴇɴᴄɪᴀꜱ 】\n';
+          pkgAdd.slice(0, 4).forEach(p => { resumenCambios += `\n   › +${p}`; });
+          pkgUpd.slice(0, 4).forEach(p => { resumenCambios += `\n   › ${p}`; });
+          pkgRem.slice(0, 4).forEach(p => { resumenCambios += `\n   › -${p}`; });
+          const extras = (pkgAdd.length + pkgRem.length + pkgUpd.length) - 12;
+          if (extras > 0) resumenCambios += `\n   › ...y ${extras} más`;
         }
       }
 
-      const logText = updateLog.map(l => `➜ ${l}`).join('\n');
+      const logText = updateLog.map(l => `⊹ ${l}`).join('\n');
 
       await client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       _Actualización Completa_
+       ᴜᴘᴅᴀᴛᴇ ᴄᴏᴍᴘʟᴇᴛᴀᴅᴏ
 ${BORDER_BOTTOM}
 
-✓ Bot actualizado exitosamente
+⊹ Bot actualizado exitosamente
 
 ${logText}
 
-➜ Versión: ${newHash}
-${resumenCambios || '\n➜ Sin cambios detectados.'}
+⊹ Versión: ${newHash}
+${resumenCambios || '\n⊹ Sin cambios detectados.'}
 
 ${BORDER_TOP}
-       _Reiniciando..._
+       🔄 ʀᴇɪɴɪᴄɪᴀɴᴅᴏ ᴇɴ 5ꜱ
+       🐾 El Vigilante
 ${BORDER_BOTTOM}`
       }, { quoted: m });
 
@@ -396,17 +441,17 @@ ${BORDER_BOTTOM}`
       await client.sendMessage(from, {
         text:
 `${BORDER_TOP}
-       _Error en Update_
+       ᴇʀʀᴏʀ ᴇɴ ᴜᴘᴅᴀᴛᴇ
 ${BORDER_BOTTOM}
 
-✗ Falló la actualización
+⊹ Falló la actualización
+> ${String(e?.message || e).slice(0, 200)}
 
-${String(e?.message || e).slice(0, 200)}
+【 ᴘᴏꜱɪʙʟᴇꜱ ᴄᴀᴜꜱᴀꜱ 】
 
-➜ Posibles causas:
-  ➜ Sin conexión a GitHub
-  ➜ Repositorio privado
-  ➜ Sin permisos de escritura
+⊹ Sin conexión a GitHub
+⊹ El repositorio es privado
+⊹ Sin permisos de escritura
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
