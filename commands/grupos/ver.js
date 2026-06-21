@@ -32,7 +32,15 @@ ${BORDER_BOTTOM}
     }
 
     try {
-      const buffer = await client.downloadMediaMessage(m);
+      const downloadMediaMessage = ctx?.downloadMediaMessage || client?.downloadMediaMessage;
+      
+      let buffer;
+      if (typeof downloadMediaMessage === 'function') {
+        buffer = await downloadMediaMessage(m, 'buffer', {});
+      } else {
+        const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
+        buffer = await dlMedia(m, 'buffer', {});
+      }
 
       if (!buffer || !buffer.length) {
         throw new Error('No se pudo descargar el archivo.');
@@ -54,7 +62,7 @@ ${BORDER_BOTTOM}
 
       const messageOptions = {
         [type]: buffer,
-        caption: caption || '📸 View once reenviado',
+        caption: caption || 'View once reenviado',
         mimetype: mimetype
       };
 
