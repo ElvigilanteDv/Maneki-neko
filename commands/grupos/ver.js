@@ -1,3 +1,5 @@
+const { downloadMediaBuffer } = require('../../utils/mediaTools');
+
 module.exports = {
   command: ['ver', 'view', 'vo'],
   description: 'Reenvía una imagen o video view once como mensaje normal',
@@ -13,10 +15,10 @@ module.exports = {
     if (!target) {
       return client.sendMessage(from, {
         text: `${BORDER_TOP}
-       _Ver View Once_
+       _Ver View Once 🐾_
 ${BORDER_BOTTOM}
 
-• Responde a una imagen o video "view once".
+• Responde a una imagen o video "ver".
 
 • El mensaje será reenviado como normal.`
       }, { quoted: m });
@@ -31,16 +33,26 @@ ${BORDER_BOTTOM}
       }, { quoted: m });
     }
 
+    // Obtener el mensaje de media correcto
+    const mediaMessage = isViewOnceImage ? target.imageMessage : target.videoMessage;
+    
+    // Verificar que el mediaKey existe (el ViewOnce no ha expirado)
+    if (!mediaMessage?.mediaKey) {
+      return client.sendMessage(from, {
+        text: '❌ Este view once ya expiró o fue visto. No se puede recuperar.'
+      }, { quoted: m });
+    }
+
     try {
-      const downloadMediaMessage = ctx?.downloadMediaMessage || client?.downloadMediaMessage;
-      
-      let buffer;
-      if (typeof downloadMediaMessage === 'function') {
-        buffer = await downloadMediaMessage(m, 'buffer', {});
-      } else {
-        const { downloadMediaMessage: dlMedia } = await import('@whiskeysockets/baileys');
-        buffer = await dlMedia(m, 'buffer', {});
-      }
+      // Construir objeto mensaje compatible con downloadMediaBuffer
+      const fakeMsg = {
+        key: m.key,
+        message: isViewOnceImage 
+          ? { imageMessage: mediaMessage }
+          : { videoMessage: mediaMessage }
+      };
+
+      const buffer = await downloadMediaBuffer(ctx, client, fakeMsg);
 
       if (!buffer || !buffer.length) {
         throw new Error('No se pudo descargar el archivo.');
@@ -52,12 +64,12 @@ ${BORDER_BOTTOM}
 
       if (isViewOnceImage) {
         type = 'image';
-        mimetype = target.imageMessage.mimetype || 'image/jpeg';
-        caption = target.imageMessage.caption || '';
+        mimetype = mediaMessage.mimetype || 'image/jpeg';
+        caption = mediaMessage.caption || '';
       } else if (isViewOnceVideo) {
         type = 'video';
-        mimetype = target.videoMessage.mimetype || 'video/mp4';
-        caption = target.videoMessage.caption || '';
+        mimetype = mediaMessage.mimetype || 'video/mp4';
+        caption = mediaMessage.caption || '';
       }
 
       const messageOptions = {
