@@ -28,8 +28,8 @@ module.exports = {
        ʙɪᴇɴᴠᴇɴɪᴅᴀ
 ${BORDER_BOTTOM}
 
-⊹ ❌ Bienvenida desactivada
-> El bot ya no enviará mensajes al entrar nuevos miembros
+➜ ❌ Bienvenida desactivada
+➜ El bot ya no enviará mensajes al entrar nuevos miembros
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -45,8 +45,8 @@ ${BORDER_BOTTOM}`
        ʙɪᴇɴᴠᴇɴɪᴅᴀ
 ${BORDER_BOTTOM}
 
-⊹ ✅ Bienvenida activada
-> Se usará el mensaje ${groupOpts.welcomeText ? 'personalizado' : 'por defecto'}
+➜ ✅ Bienvenida activada
+➜ Se usará el mensaje ${groupOpts.welcomeText ? 'personalizado' : 'por defecto'}
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -62,7 +62,7 @@ ${BORDER_BOTTOM}`
        ʙɪᴇɴᴠᴇɴɪᴅᴀ
 ${BORDER_BOTTOM}
 
-⊹ ✅ Mensaje e imagen restablecidos al default
+➜ ✅ Mensaje e imagen restablecidos al default
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -82,18 +82,18 @@ ${BORDER_BOTTOM}
 
 【 ᴄᴏɴꜰɪɢᴜʀᴀᴄɪóɴ ᴀᴄᴛᴜᴀʟ 】
 
-⊹ Estado: ${estado}
-⊹ Imagen: ${imagen}
+➜ Estado: ${estado}
+➜ Imagen: ${imagen}
 
-⊹ Texto:
+➜ Texto:
 > ${texto.replace(/\n/g, '\n> ')}
 
 【 ᴠᴀʀɪᴀʙʟᴇꜱ ᴅɪꜱᴘᴏɴɪʙʟᴇꜱ 】
 
-⊹ {nombre} — nombre del usuario
-⊹ {mencion} — mención @usuario
-⊹ {grupo} — nombre del grupo
-⊹ {miembros} — total de miembros
+➜ {nombre} — nombre del usuario
+➜ {mencion} — mención @usuario
+➜ {grupo} — nombre del grupo
+➜ {miembros} — total de miembros
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -132,9 +132,9 @@ ${BORDER_BOTTOM}`
        ʙɪᴇɴᴠᴇɴɪᴅᴀ
 ${BORDER_BOTTOM}
 
-⊹ ✅ Imagen personalizada guardada
-${textoPorArgs ? `⊹ ✅ Texto actualizado` : '⊹ Texto sin cambios'}
-⊹ Bienvenida activada automáticamente
+➜ ✅ Imagen personalizada guardada
+${textoPorArgs ? '➜ ✅ Texto actualizado' : '➜ Texto sin cambios'}
+➜ Bienvenida activada automáticamente
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -157,31 +157,31 @@ ${BORDER_BOTTOM}
 
 【 ᴜꜱᴏ 】
 
-⊹ ${prefix}setwelcome <texto>
-> Personaliza el mensaje de bienvenida
+➜ ${prefix}setwelcome <texto>
+➜ Personaliza el mensaje de bienvenida
 
-⊹ ${prefix}setwelcome on/off
-> Activa o desactiva la bienvenida
+➜ ${prefix}setwelcome on/off
+➜ Activa o desactiva la bienvenida
 
-⊹ ${prefix}setwelcome reset
-> Vuelve al mensaje por defecto
+➜ ${prefix}setwelcome reset
+➜ Vuelve al mensaje por defecto
 
-⊹ ${prefix}setwelcome ver
-> Muestra la configuración actual
+➜ ${prefix}setwelcome ver
+➜ Muestra la configuración actual
 
-⊹ Envía una imagen con caption ${prefix}setwelcome
-> Guarda esa imagen como portada
+➜ Envía una imagen con caption ${prefix}setwelcome
+➜ Guarda esa imagen como portada
 
 【 ᴠᴀʀɪᴀʙʟᴇꜱ 】
 
-⊹ {nombre} — nombre del usuario
-⊹ {mencion} — mención @usuario
-⊹ {grupo} — nombre del grupo
-⊹ {miembros} — total de miembros
+➜ {nombre} — nombre del usuario
+➜ {mencion} — mención @usuario
+➜ {grupo} — nombre del grupo
+➜ {miembros} — total de miembros
 
 【 ᴇᴊᴇᴍᴘʟᴏ 】
 
-⊹ ${prefix}setwelcome Bienvenido {nombre} a {grupo}
+➜ ${prefix}setwelcome Bienvenido {nombre} a {grupo}
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
@@ -197,8 +197,8 @@ ${BORDER_BOTTOM}`
        ʙɪᴇɴᴠᴇɴɪᴅᴀ
 ${BORDER_BOTTOM}
 
-⊹ ✅ Mensaje personalizado guardado
-⊹ Bienvenida activada automáticamente
+➜ ✅ Mensaje personalizado guardado
+➜ Bienvenida activada automáticamente
 
 > ${texto}
 
