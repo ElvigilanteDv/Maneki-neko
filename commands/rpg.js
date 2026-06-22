@@ -452,7 +452,7 @@ ${BORDER_BOTTOM}
 『 ᴄʟᴀꜱᴇꜱ 』
 
 ⊹ ⚔️ Guerrero — tanque resistente
-⊹ 🔮 Mago     — alto daño, frágil
+⊹ 🔮 Mago     — alto daño, poderoso 
 ⊹ 🏹 Arquero  — equilibrado
 
 ${BORDER_TOP}
