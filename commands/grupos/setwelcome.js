@@ -19,7 +19,6 @@ module.exports = {
 
     const subCmd = String(args[0] || '').toLowerCase();
 
-    // ── .setwelcome off — desactivar bienvenida ───────────────────────────────
     if (subCmd === 'off' || subCmd === 'desactivar') {
       groupOptions[from] = { ...groupOpts, bienvenida: false };
       saveSettings({ groupOptions });
@@ -37,7 +36,6 @@ ${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
-    // ── .setwelcome on — activar bienvenida (con mensaje guardado o default) ──
     if (subCmd === 'on' || subCmd === 'activar') {
       groupOptions[from] = { ...groupOpts, bienvenida: true };
       saveSettings({ groupOptions });
@@ -55,7 +53,6 @@ ${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
-    // ── .setwelcome reset — limpiar personalización ───────────────────────────
     if (subCmd === 'reset') {
       groupOptions[from] = { ...groupOpts, welcomeText: null, welcomeImage: null };
       saveSettings({ groupOptions });
@@ -72,7 +69,6 @@ ${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
-    // ── .setwelcome ver — mostrar configuración actual ────────────────────────
     if (subCmd === 'ver' || subCmd === 'show') {
       const estado  = groupOpts.bienvenida ? '✅ Activa' : '❌ Inactiva';
       const texto   = groupOpts.welcomeText || '(mensaje por defecto)';
@@ -104,7 +100,6 @@ ${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
-    // ── .setwelcome [imagen adjunta] — guardar imagen personalizada ───────────
     const msg = m.message || {};
     const hasImage = msg.imageMessage || msg.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage;
 
@@ -120,7 +115,6 @@ ${BORDER_BOTTOM}`
 
         if (!imgBuffer || !imgBuffer.length) throw new Error('No se pudo descargar la imagen');
 
-        // Guardar como base64 en settings
         const base64 = imgBuffer.toString('base64');
         const textoPorArgs = args.slice(1).join(' ').trim() || null;
 
@@ -152,7 +146,6 @@ ${BORDER_BOTTOM}`
       }
     }
 
-    // ── .setwelcome [texto] — guardar texto personalizado ────────────────────
     const texto = args.join(' ').trim();
 
     if (!texto) {
