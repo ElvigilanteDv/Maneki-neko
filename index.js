@@ -53,7 +53,7 @@ const EXTRA_OWNER       = '59177474230';
 const LINKED_BOT_NUMBER = '59177474230';
 
 const DEFAULT_SETTINGS = {
-  prefix:           '.',
+  prefix:           ['.', '#'],
   ownerNumber:      [MAIN_OWNER, EXTRA_OWNER],
   botNumber:        LINKED_BOT_NUMBER,
   authFolder:       SESSION_DIR,
@@ -1127,6 +1127,20 @@ async function startBot() {
       const body      = getMessageText(m).trim();
       const isGroup   = String(from || '').endsWith('@g.us');
       const groupOpts = isGroup ? getGroupOptions(from) : {};
+
+      // ── Tracker de actividad por grupo (para comando .inactivos) ─────────────
+      if (isGroup && sender && !String(sender).endsWith('@g.us')) {
+        const senderNum = String(sender).split('@')[0].split(':')[0].replace(/\D/g, '');
+        if (senderNum) {
+          global.__groupActivity = global.__groupActivity || new Map();
+          const groupKey = from;
+          if (!global.__groupActivity.has(groupKey)) {
+            global.__groupActivity.set(groupKey, new Map());
+          }
+          global.__groupActivity.get(groupKey).set(senderNum, Date.now());
+        }
+      }
+
 
       let metadata      = null;
       let senderIsAdmin = false;
