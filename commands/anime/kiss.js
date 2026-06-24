@@ -1,70 +1,78 @@
 module.exports = {
-  command: ['kiss', 'beso'],
-  description: 'Le da un beso a la persona mencionada',
+  command: ['kiss', 'besar', 'beso'],
+  description: 'Envía un beso a la persona mencionada',
   categoria: 'anime',
 
   run: async (client, m, args, from, isOwner, ctx = {}) => {
-    const settings = ctx?.settings || {};
-    const axios    = ctx?.axios;
-    const apiBase  = String(settings.apiBaseUrl || '').trim();
-    const apiKey   = String(settings.apiKey || '').trim();
-    const prefix   = ctx?.prefix || '.';
+    const { axios } = ctx;
 
-    const senderJid = m.key.participant || m.key.remoteJid;
+    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
+    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
 
-    let targetJid =
-      m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] ||
-      m.message?.extendedTextMessage?.contextInfo?.participant ||
-      null;
+    const mentioned = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+    const quoted = m.message?.extendedTextMessage?.contextInfo?.participant;
+    const sender = m.key.participant || m.key.remoteJid;
 
-    if (!targetJid) {
+    let target = null;
+
+    if (mentioned.length > 0) {
+      target = mentioned[0];
+    } else if (quoted) {
+      target = quoted;
+    } else {
       const mentionArg = args.find(a => a.startsWith('@'));
       if (mentionArg) {
         const num = mentionArg.replace('@', '').replace(/\D/g, '');
-        if (num) targetJid = `${num}@s.whatsapp.net`;
+        if (num) target = `${num}@s.whatsapp.net`;
       }
     }
 
-    if (!targetJid) {
-      await client.sendMessage(from, {
-        text: `❌ Menciona a alguien o responde su mensaje.\n> Ejemplo: ${prefix}kiss @usuario`
+    if (!target) {
+      return client.sendMessage(from, {
+        text:
+`${BORDER_TOP}
+       _Kiss_
+${BORDER_BOTTOM}
+
+➜ Uso correcto:
+  • .kiss @usuario
+  • Responde a un mensaje con .kiss
+
+➜ El bot enviará un beso a la persona.`
       }, { quoted: m });
-      return;
     }
-
-    if (!apiBase || !apiKey) {
-      await client.sendMessage(from, { text: '❌ La API no está configurada.' }, { quoted: m });
-      return;
-    }
-
-    let imageUrl = '';
 
     try {
-      const { data } = await axios.get(`${apiBase}/api/anime/kiss`, {
-        params: { apiKey },
-        timeout: 15000,
+      const { data } = await axios.get('https://api.delirius.store/reactions/kiss', {
+        timeout: 10000
       });
-      imageUrl = data?.url || '';
-    } catch {
-      await client.sendMessage(from, { text: '❌ Error al obtener la imagen.' }, { quoted: m });
-      return;
-    }
 
-    if (!imageUrl) {
-      await client.sendMessage(from, { text: '❌ No se pudo obtener la imagen.' }, { quoted: m });
-      return;
-    }
+      if (!data.status || !data.data || !data.data.url) {
+        throw new Error('No se pudo obtener el video');
+      }
 
-    const caption = `🐾 @${senderJid.split('@')[0]} le dio un beso a @${targetJid.split('@')[0]}`;
+      const videoUrl = data.data.url;
+      const senderNum = sender.split('@')[0];
+      const targetNum = target.split('@')[0];
 
-    try {
+      const caption =
+`${BORDER_TOP}
+       _Beso_
+${BORDER_BOTTOM}
+
+➜ @${senderNum} le dio un beso a @${targetNum}`;
+
       await client.sendMessage(from, {
-        image: { url: imageUrl },
-        caption,
-        mentions: [senderJid, targetJid],
+        video: { url: videoUrl },
+        caption: caption,
+        mentions: [sender, target]
       }, { quoted: m });
-    } catch {
-      await client.sendMessage(from, { text: '❌ Error al enviar la imagen.' }, { quoted: m });
+
+    } catch (error) {
+      console.error('Error en kiss:', error);
+      await client.sendMessage(from, {
+        text: `❌ Error al enviar el beso.\n> ${error.message || 'Intenta de nuevo más tarde.'}`
+      }, { quoted: m });
     }
-  },
+  }
 };
