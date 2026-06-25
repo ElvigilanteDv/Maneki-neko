@@ -1268,7 +1268,7 @@ async function startBot() {
         return;
       }
 
-      log('CMD', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
+      log('MANEKI', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
 
       if (cmd.isOwner && !senderIsOwner) {
         await sock.sendMessage(from, { text: '❌ Solo el owner puede usar este comando.' }, { quoted: m });
