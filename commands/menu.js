@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   command: ['menu', 'help', 'comandos'],
   description: 'Muestra el menú de comandos',
-  categoría : 'sistema',
+  categoria: 'sistema',
 
   run: async (client, m, args, from, isCreator, ctx = {}) => {
     const prefix   = ctx?.prefix || '.';
@@ -27,15 +27,12 @@ module.exports = {
       herramientas: { title: 'ʜᴇʀʀᴀᴍɪᴇɴᴛᴀꜱ' },
       sistema:      { title: 'ꜱɪꜱᴛᴇᴍᴀ'      },
       owner:        { title: 'ᴏᴡɴᴇʀ'        },
-      anime:        { title: 'ᴀɴɪᴍᴇ'      },
+      anime:        { title: 'ᴀɴɪᴍᴇ'        },
     };
 
     const CAT_ORDER = ['descargas', 'grupos', 'juegos', 'herramientas', 'sistema', 'owner', 'anime'];
 
-    // Comandos que NO aparecen en el menú (solo el propio menu y sus aliases)
-    const HIDDEN = new Set([
-      'menu','help','comandos',
-    ]);
+    const HIDDEN = new Set(['menu','help','comandos']);
 
     const grouped = {};
     const seen    = new Set();
@@ -51,9 +48,6 @@ module.exports = {
       }
     }
 
-    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
-    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
-
     const allCats = [
       ...CAT_ORDER.filter(c => grouped[c]?.length),
       ...Object.keys(grouped).filter(c => !CAT_ORDER.includes(c) && grouped[c]?.length),
@@ -64,7 +58,7 @@ module.exports = {
       const meta = CAT_META[cat] || { title: cat.toUpperCase() };
       let block  = `『 ${meta.title} 』\n\n`;
       for (const { cmd, desc } of grouped[cat]) {
-        block += `🍪 ${prefix}${cmd}\n`;
+        block += `◆ ${prefix}${cmd}\n`;
         if (desc) block += `> ${desc}\n`;
       }
       block += `\n`;
@@ -72,26 +66,14 @@ module.exports = {
     });
 
     const caption =
-`${BORDER_TOP}
-       ᴍᴀɴᴇᴋɪ-ɴᴇᴋᴏ ʙᴏᴛ
-${BORDER_BOTTOM}
+`❀ *Maneki-Neko Bot*
+✰ _Prefijo_ » \`${prefix}\`
+● _API_ » ${apiReady ? 'Activa' : 'Pendiente'}
+◆ _Uptime_ » ${uptime}
+ꕥ _Comandos_ » ${seen.size}
+૮꒰ ˶• ᴗ •˶꒱ა Usa *${prefix}register* si aún no te registras
 
-> Un bot de WhatsApp multifuncional con la suerte de un gato
-
-『 ᴇꜱᴛᴀᴅᴏ 』
-
-🍩 Prefijo: ${prefix}
-> Símbolo usado para activar comandos
-🍩 API: ${apiReady ? 'Activa' : 'Pendiente'}
-> Estado de conexión con el servidor externo
-🍩 Uptime: ${uptime}
-> Tiempo que el bot lleva encendido
-🍩 Comandos: ${seen.size}
-> Total de comandos disponibles
-
-${sections}${BORDER_TOP}
-       🐾 El Vigilante
-${BORDER_BOTTOM}`;
+${sections}> *➮ Usa _${prefix}help_ para ver este menú en cualquier momento.*`;
 
     const IMAGE_URL = 'https://files.catbox.moe/8r6m4c.jpg';
 
@@ -110,7 +92,6 @@ ${BORDER_BOTTOM}`;
           { quoted: m }
         );
       } else {
-        // Fallback: dejar que Baileys descargue directo desde la URL
         await client.sendMessage(
           m.key.remoteJid,
           { image: { url: IMAGE_URL }, caption },
