@@ -162,7 +162,7 @@ function log(label, msg, color = 'cyan') {
 
 const LABEL_ICONS = {
   SESSION:  '💾', BAILEYS: '⚙️ ', CODE:    '🔑', QR:      '📷',
-  CMD:      '💬', AUTH:    '🔒', CLOSE:   '🔴', RECONECT:'🔄',
+  MANEKI:      '🐈', AUTH:    '🔒', CLOSE:   '🔴', RECONECT:'🔄',
   CONFIG:   '⚙️ ', FATAL:   '💀', ERR:     '❌', INFO:    'ℹ️ ',
   CONNECT:  '🟢', INPUT:   '📝', PAIRING: '🔗',
 };
