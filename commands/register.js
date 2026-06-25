@@ -39,6 +39,7 @@ ${BORDER_BOTTOM}
 ꕥ Registrado » ${u.fecha}
 
 > Usa ${prefix}perfil para ver tu información completa
+> Usa ${prefix}unregister para borrar tu registro
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`;
@@ -60,7 +61,7 @@ ${BORDER_BOTTOM}
 > ${prefix}register <nombre> <edad>
 
 ● Ejemplo:
-> ${prefix}register Edward 14 
+> ${prefix}register Sakura 20
 
 ꕥ Solo necesitas hacerlo una vez
 
