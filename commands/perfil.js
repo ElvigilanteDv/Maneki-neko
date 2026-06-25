@@ -25,7 +25,7 @@ ${BORDER_BOTTOM}
 
 ❀ No tienes un registro activo.
 
-✰ Usa ${prefix}register para registrarte.
+➮ Usa ${prefix}register para registrarte.
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`
