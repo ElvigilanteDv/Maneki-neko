@@ -46,7 +46,9 @@ const { reloadCommands } = require('./utils/reloadCommands');
 const SETTINGS_FILE  = path.join(process.cwd(), 'settings.json');
 const SESSION_DIR    = path.join(process.cwd(), 'session', 'maneki-neko');
 const RUNTIME_DIR    = path.join(process.cwd(), 'runtime');
-const CONNECTED_FILE = path.join(RUNTIME_DIR, 'connected.json');
+const CONNECTED_FILE  = path.join(RUNTIME_DIR, 'connected.json');
+const ACTIVITY_FILE   = path.join(RUNTIME_DIR, 'activity.json');
+const USERS_FILE      = path.join(RUNTIME_DIR, 'users.json');
 
 const MAIN_OWNER        = '59177474230';
 const EXTRA_OWNER       = '59177474230';
@@ -1054,23 +1056,35 @@ async function startBot() {
         const mention = `@${userNum}`;
 
         if (isBienvenida) {
-          const caption =
-`╭━━━〔 🐾 *BIENVENIDA* 〕━━━⬣
+          const totalMembers = metadata?.participants?.length || 0;
+          const fechaBienvenida = new Date().toLocaleDateString('es-PE', {
+            day: '2-digit', month: 'long', year: 'numeric'
+          });
+          const welcomeText = groupOpts?.welcomeText;
+          const welcomeImageB64 = groupOpts?.welcomeImage;
 
-👤 *¡Hola, ${displayName}!*
-🔖 ${mention}
-🎉 ¡Bienvenido/a al grupo!
+          let caption;
+          if (welcomeText) {
+            caption = welcomeText
+              .replace(/{nombre}/gi, displayName)
+              .replace(/{mencion}/gi, mention)
+              .replace(/{grupo}/gi, groupName)
+              .replace(/{miembros}/gi, String(totalMembers));
+          } else {
+            caption =
+`❀ Bienvenido/a a *"_Maneki-Neko Bot_"*
+✰ _Usuario_ » ${mention}
+● Grupo » *${groupName}*
+◆ _Ahora somos ${totalMembers} Miembros._
+ꕥ Fecha » ${fechaBienvenida}
+૮꒰ ˶• ᴗ •˶꒱ა ¡Disfruta tu estadía en el grupo!
+> *➮ Usa _${String(settings.prefix || '.')}menu_ para ver la lista de comandos.*`;
+          }
 
-📌 *Grupo:* ${groupName}
-━━━━━━━━━━━━━━━━━━
-🐾 Esperamos que disfrutes
-    tu estadía con nosotros.
-
-📜 Lee las reglas del grupo
-    y respétalas siempre.
-
-━━━━━━━━━━━━━━━━━━
-💙 *MANEKI-NEKO BOT*`;
+          let imgToSend = groupImage;
+          if (welcomeImageB64) {
+            try { imgToSend = Buffer.from(welcomeImageB64, 'base64'); } catch {}
+          }
 
           try {
             if (groupImage) {
@@ -1244,6 +1258,16 @@ async function startBot() {
         return;
       }
 
+      // ── Bloqueo si no está registrado (excepto owner y el propio .register) ──
+      const BYPASS_REGISTER = new Set(['register', 'registro', 'reg', 'menu', 'help', 'comandos']);
+      if (!senderIsOwner && !BYPASS_REGISTER.has(commandName) && !isRegistered(sender)) {
+        const prefixUsado = String(settings.prefix || '.')?.[0] || '.';
+        await sock.sendMessage(from, {
+          text: `❌ No estás registrado.\n> Usa *${prefixUsado}register <nombre> <edad>* para acceder al bot.`
+        }, { quoted: m });
+        return;
+      }
+
       log('CMD', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
 
       if (cmd.isOwner && !senderIsOwner) {
@@ -1304,13 +1328,66 @@ async function startBot() {
   }
 }
 
+
+// ─── Usuarios registrados ─────────────────────────────────────────────────────
+function getUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8')) || {};
+  } catch { return {}; }
+}
+
+function isRegistered(jid = '') {
+  const num = String(jid).split('@')[0].split(':')[0].replace(/\D/g, '');
+  if (!num) return false;
+  const users = getUsers();
+  return Boolean(users[num]);
+}
+
+// ─── Persistencia de actividad de grupo ───────────────────────────────────────
+function loadGroupActivity() {
+  try {
+    if (!fs.existsSync(ACTIVITY_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(ACTIVITY_FILE, 'utf-8'));
+    global.__groupActivity = global.__groupActivity || new Map();
+    for (const [groupId, members] of Object.entries(raw || {})) {
+      const memberMap = new Map();
+      for (const [num, ts] of Object.entries(members || {})) {
+        memberMap.set(num, Number(ts));
+      }
+      global.__groupActivity.set(groupId, memberMap);
+    }
+    log('INFO', `Actividad de grupos cargada desde activity.json`, 'cyan');
+  } catch {}
+}
+
+function saveGroupActivity() {
+  try {
+    if (!global.__groupActivity) return;
+    fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+    const obj = {};
+    for (const [groupId, members] of global.__groupActivity.entries()) {
+      obj[groupId] = {};
+      for (const [num, ts] of members.entries()) {
+        obj[groupId][num] = ts;
+      }
+    }
+    fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(obj));
+  } catch {}
+}
+
+// Auto-guardado cada 5 minutos
+setInterval(saveGroupActivity, 5 * 60 * 1000).unref?.();
+
 // ─── Inicio ────────────────────────────────────────────────────────────────────
 loadBaileys().then(() => {
+  loadGroupActivity();
   startBot().catch((err) => log('FATAL', c('bred', String(err?.message || err)), 'red'));
 });
 
 // ─── Manejo de señales ────────────────────────────────────────────────────────
 process.on('SIGINT', () => {
+  saveGroupActivity();
   try { rl?.close?.(); } catch {}
   console.log('\n' + c('bred', '  Bot apagado (SIGINT)'));
   process.exit(0);
