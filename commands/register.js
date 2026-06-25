@@ -79,7 +79,7 @@ ${BORDER_BOTTOM}
 > ${prefix}register <nombre> <edad>
 
 ● Ejemplo:
-> ${prefix}register Sakura 20
+> ${prefix}register Edward 14 
 
 ꕥ Solo necesitas hacerlo una vez
 
