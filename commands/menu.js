@@ -58,7 +58,7 @@ module.exports = {
       const meta = CAT_META[cat] || { title: cat.toUpperCase() };
       let block  = `『 ${meta.title} 』\n\n`;
       for (const { cmd, desc } of grouped[cat]) {
-        block += `◆ ${prefix}${cmd}\n`;
+        block += `✰ ${prefix}${cmd}\n`;
         if (desc) block += `> ${desc}\n`;
       }
       block += `\n`;
