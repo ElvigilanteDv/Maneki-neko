@@ -1,5 +1,3 @@
-const path = require('path');
-
 module.exports = {
   command: ['menu', 'help', 'comandos'],
   description: 'Muestra el menú de comandos',
@@ -10,6 +8,16 @@ module.exports = {
     const settings = ctx?.settings || {};
     const axios    = ctx?.axios;
     const apiReady = Boolean(String(settings.apiBaseUrl || '').trim() && String(settings.apiKey || '').trim());
+
+    const sender = m.key.participant || m.key.remoteJid;
+    const users = ctx?.getUsers ? ctx.getUsers() : {};
+    const isReg = users[sender] || false;
+
+    if (!isReg && !isCreator) {
+      return client.sendMessage(from, {
+        text: `❌ No estás registrado.\n\n➜ Usa *${prefix}register* para registrarte primero.`
+      }, { quoted: m });
+    }
 
     const up = Math.floor(process.uptime());
     const h  = Math.floor(up / 3600);
@@ -71,39 +79,38 @@ module.exports = {
 ● _API_ » ${apiReady ? 'Activa' : 'Pendiente'}
 ◆ _Uptime_ » ${uptime}
 ꕥ _Comandos_ » ${seen.size}
-૮꒰ ˶• ᴗ •˶꒱ა Usa *${prefix}register* si aún no te registras
 
 ${sections}> *➮ Usa _${prefix}help_ para ver este menú en cualquier momento.*`;
 
-    const IMAGE_URL = 'https://files.catbox.moe/8r6m4c.jpg';
-
+    // ─── OBTENER FOTO DEL USUARIO ────────────────────────────────────────────
+    let userImage = null;
     try {
-      let imageBuffer = null;
+      const ppUrl = await client.profilePictureUrl(sender, 'image');
+      if (ppUrl) {
+        const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
+        userImage = Buffer.from(resp.data);
+      }
+    } catch {}
 
-      if (axios) {
+    // ─── ENVIAR MENÚ CON FOTO DEL USUARIO O FALLBACK ────────────────────────
+    if (userImage) {
+      await client.sendMessage(from, {
+        image: userImage,
+        caption: caption
+      }, { quoted: m });
+    } else {
+      const IMAGE_URL = 'https://files.catbox.moe/8r6m4c.jpg';
+      try {
         const resp = await axios.get(IMAGE_URL, { responseType: 'arraybuffer', timeout: 10000 });
-        imageBuffer = Buffer.from(resp.data);
+        await client.sendMessage(from, {
+          image: Buffer.from(resp.data),
+          caption: caption
+        }, { quoted: m });
+      } catch {
+        await client.sendMessage(from, {
+          text: caption
+        }, { quoted: m });
       }
-
-      if (imageBuffer) {
-        await client.sendMessage(
-          m.key.remoteJid,
-          { image: imageBuffer, caption },
-          { quoted: m }
-        );
-      } else {
-        await client.sendMessage(
-          m.key.remoteJid,
-          { image: { url: IMAGE_URL }, caption },
-          { quoted: m }
-        );
-      }
-    } catch {
-      await client.sendMessage(
-        m.key.remoteJid,
-        { text: caption },
-        { quoted: m }
-      );
     }
   },
 };
