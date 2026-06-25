@@ -1,3 +1,22 @@
+const fs   = require('fs');
+const path = require('path');
+
+const USERS_FILE = path.join(process.cwd(), 'runtime', 'users.json');
+
+function loadUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8')) || {};
+  } catch { return {}; }
+}
+
+function saveUsers(users) {
+  try {
+    fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  } catch {}
+}
+
 module.exports = {
   command: ['register', 'registro', 'reg'],
   description: 'Regístrate para usar el bot',
@@ -6,16 +25,14 @@ module.exports = {
   run: async (client, m, args, from, isOwner, ctx = {}) => {
     const prefix = ctx?.prefix || '.';
     const axios  = ctx?.axios;
-    const getUsers = ctx?.getUsers || (() => ({}));
-    const saveUsers = ctx?.saveUsers || (() => {});
 
     const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
     const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
 
-    const sender = m.key.participant || m.key.remoteJid;
+    const sender  = m.key.participant || m.key.remoteJid;
     const senderNum = String(sender).split('@')[0].split(':')[0].replace(/\D/g, '');
 
-    const users = getUsers();
+    const users = loadUsers();
 
     if (users[senderNum]) {
       const u = users[senderNum];
@@ -38,10 +55,10 @@ ${BORDER_BOTTOM}
 ● Edad » ${u.edad} años
 ꕥ Registrado » ${u.fecha}
 
-➮ Usa ${prefix}perfil para ver tu información completa
-➮ Usa ${prefix}unregister para borrar tu registro
+> Usa ${prefix}perfil para ver tu información completa
 
 ${BORDER_TOP}
+       🐾 El Vigilante
 ${BORDER_BOTTOM}`;
 
       if (pfpBuffer) {
@@ -50,6 +67,7 @@ ${BORDER_BOTTOM}`;
       return client.sendMessage(from, { text: caption, mentions: [sender] }, { quoted: m });
     }
 
+    // ── Validar argumentos: .register Nombre Edad ─────────────────────────────
     if (args.length < 2) {
       return client.sendMessage(from, {
         text:
@@ -58,19 +76,20 @@ ${BORDER_BOTTOM}`;
 ${BORDER_BOTTOM}
 
 ❀ Para registrarte escribe:
-➮ ${prefix}register <nombre> <edad>
+> ${prefix}register <nombre> <edad>
 
 ● Ejemplo:
-➮ ${prefix}register Edward 14 
+> ${prefix}register Sakura 20
 
 ꕥ Solo necesitas hacerlo una vez
 
 ${BORDER_TOP}
+       🐾 El Vigilante
 ${BORDER_BOTTOM}`
       }, { quoted: m });
     }
 
-    const edad = parseInt(args[args.length - 1]);
+    const edad   = parseInt(args[args.length - 1]);
     const nombre = args.slice(0, -1).join(' ').trim();
 
     if (!nombre || nombre.length < 2 || nombre.length > 30) {
@@ -93,6 +112,7 @@ ${BORDER_BOTTOM}`
     users[senderNum] = { nombre, edad, fecha, registrado: ahora.getTime() };
     saveUsers(users);
 
+    // ── Intentar obtener foto de perfil ───────────────────────────────────────
     let pfpBuffer = null;
     try {
       const ppUrl = await client.profilePictureUrl(`${senderNum}@s.whatsapp.net`, 'image');
@@ -114,9 +134,10 @@ ${BORDER_BOTTOM}
 ꕥ Fecha » ${fecha}
 
 ૮꒰ ˶• ᴗ •˶꒱ა ¡Ya puedes usar todos los comandos!
-➮ Escribe ${prefix}menu para ver la lista
+> Escribe ${prefix}menu para ver la lista
 
 ${BORDER_TOP}
+       🐾 El Vigilante
 ${BORDER_BOTTOM}`;
 
     if (pfpBuffer) {
