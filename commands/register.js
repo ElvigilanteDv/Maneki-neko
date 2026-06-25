@@ -38,8 +38,8 @@ ${BORDER_BOTTOM}
 ● Edad » ${u.edad} años
 ꕥ Registrado » ${u.fecha}
 
-> Usa ${prefix}perfil para ver tu información completa
-> Usa ${prefix}unregister para borrar tu registro
+➮ Usa ${prefix}perfil para ver tu información completa
+➮ Usa ${prefix}unregister para borrar tu registro
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`;
@@ -58,10 +58,10 @@ ${BORDER_BOTTOM}`;
 ${BORDER_BOTTOM}
 
 ❀ Para registrarte escribe:
-> ${prefix}register <nombre> <edad>
+➮ ${prefix}register <nombre> <edad>
 
 ● Ejemplo:
-> ${prefix}register Edward 14 
+➮ ${prefix}register Edward 14 
 
 ꕥ Solo necesitas hacerlo una vez
 
@@ -114,7 +114,7 @@ ${BORDER_BOTTOM}
 ꕥ Fecha » ${fecha}
 
 ૮꒰ ˶• ᴗ •˶꒱ა ¡Ya puedes usar todos los comandos!
-> Escribe ${prefix}menu para ver la lista
+➮ Escribe ${prefix}menu para ver la lista
 
 ${BORDER_TOP}
 ${BORDER_BOTTOM}`;
