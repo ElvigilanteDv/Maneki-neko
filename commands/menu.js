@@ -82,20 +82,21 @@ module.exports = {
 
 ${sections}> *➮ Usa _${prefix}help_ para ver este menú en cualquier momento.*`;
 
-    // ─── OBTENER FOTO DEL USUARIO ────────────────────────────────────────────
-    let userImage = null;
+    // ─── OBTENER FOTO DEL BOT ────────────────────────────────────────────
+    let botImage = null;
     try {
-      const ppUrl = await client.profilePictureUrl(sender, 'image');
+      const botJid = client.user.id;
+      const ppUrl = await client.profilePictureUrl(botJid, 'image');
       if (ppUrl) {
         const resp = await axios.get(ppUrl, { responseType: 'arraybuffer', timeout: 8000 });
-        userImage = Buffer.from(resp.data);
+        botImage = Buffer.from(resp.data);
       }
     } catch {}
 
-    // ─── ENVIAR MENÚ CON FOTO DEL USUARIO O FALLBACK ────────────────────────
-    if (userImage) {
+    // ─── ENVIAR MENÚ CON FOTO DEL BOT O FALLBACK ────────────────────────
+    if (botImage) {
       await client.sendMessage(from, {
-        image: userImage,
+        image: botImage,
         caption: caption
       }, { quoted: m });
     } else {
