@@ -1,9 +1,4 @@
 const axios = require('axios');
-import {
-  generateWAMessageFromContent,
-  prepareWAMessageMedia,
-  proto
-} = require('@whiskeysockets/baileys');
 
 module.exports = {
   command: ['play', 'yt', 'audio', 'musica', 'song'],
@@ -15,52 +10,25 @@ module.exports = {
     const query = args.join(' ');
 
     if (!query) {
-      let media = null;
-      try {
-        media = await prepareWAMessageMedia(
-          { image: { url: 'https://files.catbox.moe/8r6m4c.jpg' } },
-          { upload: client.waUploadToServer }
-        );
-      } catch {}
+      return client.sendMessage(from, {
+        text: `PLAY YOUTUBE\n\nBusca y descarga musica de YouTube\n\nUso: ${prefix}play <nombre>\nEjemplo: ${prefix}play TWICE Strategy\nLuego usa ${prefix}play <numero> para descargar\n\n➮ Creador: Edward`
+      }, { quoted: m });
+    }
 
-      const interactiveMessage = proto.Message.InteractiveMessage.create({
-        header: {
-          title: 'MANEKI-NEKO',
-          subtitle: 'Descarga musica de YouTube',
-          hasMediaAttachment: !!media,
-          imageMessage: media?.imageMessage
-        },
-        body: {
-          text: `PLAY YOUTUBE\n\nBusca y descarga musica de YouTube\n\nUso: ${prefix}play <nombre o link>\nEjemplo: ${prefix}play TWICE Strategy\n\nPowered by El Vigilante API`
-        },
-        footer: {
-          text: 'Maneki-Neko Bot'
-        },
-        nativeFlowMessage: {
-          buttons: [{
-            name: 'single_select',
-            buttonParamsJson: JSON.stringify({
-              title: 'YOUTUBE',
-              sections: [{
-                title: 'Que deseas hacer',
-                rows: [{
-                  header: 'BUSCAR',
-                  title: 'Buscar musica',
-                  description: 'Escribe el nombre despues del comando',
-                  id: 'ytsearch'
-                }]
-              }]
-            })
-          }]
-        }
-      });
-
-      const msg = generateWAMessageFromContent(
-        from,
-        { viewOnceMessage: { message: { messageContextInfo: {}, interactiveMessage } } },
-        { quoted: m }
-      );
-      return client.relayMessage(from, msg.message, { messageId: msg.key.id });
+    const num = parseInt(query);
+    if (!isNaN(num) && num > 0) {
+      const cacheKey = `ytsearch_${from}`;
+      if (!global.ytCache) global.ytCache = new Map();
+      const cached = global.ytCache.get(cacheKey);
+      
+      if (cached && cached.length >= num) {
+        const selected = cached[num - 1];
+        return downloadAudio(client, m, from, selected.url, selected.title);
+      } else {
+        return client.sendMessage(from, { 
+          text: `No hay resultado #${num} en la cache. Realiza una nueva busqueda primero.` 
+        }, { quoted: m });
+      }
     }
 
     await client.sendMessage(from, { react: { text: '🔍', key: m.key } });
@@ -80,97 +48,36 @@ module.exports = {
       }
 
       const results = searchRes.data.data.slice(0, 10);
-      let media = null;
-      try {
-        media = await prepareWAMessageMedia(
-          { image: { url: results[0].image || results[0].thumbnail } },
-          { upload: client.waUploadToServer }
-        );
-      } catch {}
+      
+      if (!global.ytCache) global.ytCache = new Map();
+      global.ytCache.set(`ytsearch_${from}`, results);
+      setTimeout(() => global.ytCache.delete(`ytsearch_${from}`), 60000);
 
-      const rows = results.map((v, i) => ({
-        header: String(v.author?.name || 'Desconocido').slice(0, 20),
-        title: String(v.title || '').slice(0, 35),
-        description: `Duracion: ${v.duration || '?'} | Vistas: ${formatViews(v.views)}`,
-        id: `ytplay~${Buffer.from(v.url).toString('base64')}~${Buffer.from(String(v.title || 'audio')).toString('base64')}`
-      }));
-
-      const interactiveMessage = proto.Message.InteractiveMessage.create({
-        header: {
-          title: 'RESULTADOS',
-          subtitle: query.slice(0, 30),
-          hasMediaAttachment: !!media,
-          imageMessage: media?.imageMessage
-        },
-        body: {
-          text: `RESULTADOS\n\nBusqueda: ${query}\n${results.length} resultados encontrados\n\nSelecciona el video que quieras descargar`
-        },
-        footer: {
-          text: 'Maneki-Neko Bot'
-        },
-        nativeFlowMessage: {
-          buttons: [{
-            name: 'single_select',
-            buttonParamsJson: JSON.stringify({
-              title: 'RESULTADOS',
-              sections: [{
-                title: query.toUpperCase().slice(0, 24),
-                rows
-              }]
-            })
-          }]
-        }
+      let resultList = `RESULTADOS\n\nBusqueda: ${query}\n${results.length} resultados encontrados\n\n`;
+      results.forEach((v, i) => {
+        resultList += `${i + 1}. ${v.title}\n`;
+        resultList += `   Autor: ${v.author?.name || 'Desconocido'} | Duracion: ${v.duration || '?'}\n`;
+        resultList += `   ➮ Usa ${prefix}play ${i + 1} para descargar\n\n`;
       });
+      resultList += `➮ Creador: Edward`;
 
-      const msg = generateWAMessageFromContent(
-        from,
-        { viewOnceMessage: { message: { messageContextInfo: {}, interactiveMessage } } },
-        { quoted: m }
-      );
-      await client.relayMessage(from, msg.message, { messageId: msg.key.id });
+      if (results[0].image || results[0].thumbnail) {
+        await client.sendMessage(from, {
+          image: { url: results[0].image || results[0].thumbnail },
+          caption: resultList
+        }, { quoted: m });
+      } else {
+        await client.sendMessage(from, {
+          text: resultList
+        }, { quoted: m });
+      }
+
       await client.sendMessage(from, { react: { text: '✅', key: m.key } });
 
     } catch (e) {
       await client.sendMessage(from, { react: { text: '❌', key: m.key } });
       client.sendMessage(from, { text: `Error: ${e.message}` }, { quoted: m });
     }
-  },
-
-  before: async (client, m, from) => {
-    const nativeFlow = m.message?.interactiveResponseMessage?.nativeFlowResponseMessage;
-    if (!nativeFlow) return false;
-
-    let id;
-    try {
-      const data = JSON.parse(nativeFlow.paramsJson || '{}');
-      id = data.id || data.selectedId || data.selectedRowId || null;
-    } catch { return false; }
-
-    if (!id) return false;
-
-    if (id === 'ytsearch') {
-      await client.sendMessage(from, {
-        text: 'Escribe el nombre de la cancion:\n> .play <nombre>'
-      }, { quoted: m });
-      return true;
-    }
-
-    if (id.startsWith('ytplay~')) {
-      const parts = id.split('~');
-      if (parts.length < 3) return true;
-      const urlB64 = parts[1];
-      const titleB64 = parts[2];
-      let videoUrl, title;
-      try {
-        videoUrl = Buffer.from(urlB64, 'base64').toString();
-        title = Buffer.from(titleB64, 'base64').toString();
-      } catch { return true; }
-
-      await downloadAudio(client, m, from, videoUrl, title);
-      return true;
-    }
-
-    return false;
   }
 };
 
@@ -190,7 +97,7 @@ async function downloadAudio(client, m, from, videoUrl, customTitle) {
     if (data.image) {
       await client.sendMessage(from, {
         image: { url: data.image },
-        caption: `${title}\n\nAutor: ${data.author || 'Desconocido'}\nVistas: ${data.views || '?'}\nLikes: ${data.likes || '?'}\nFormato: ${data.format || 'mp3'}\n\nDescargando audio...`
+        caption: `${title}\n\nAutor: ${data.author || 'Desconocido'}\nVistas: ${data.views || '?'}\nLikes: ${data.likes || '?'}\nFormato: ${data.format || 'mp3'}\n\nDescargando audio...\n\n➮ Creador: Edward`
       }, { quoted: m });
     }
 
@@ -201,7 +108,7 @@ async function downloadAudio(client, m, from, videoUrl, customTitle) {
     }, { quoted: m });
 
     await client.sendMessage(from, {
-      text: `Descarga completada\n\n${title}\nFormato: ${data.format || 'mp3'}\n\nPowered by Maneki-Neko Bot`
+      text: `Descarga completada\n\n${title}\nFormato: ${data.format || 'mp3'}\n\n➮ Creador: Edward`
     }, { quoted: m });
 
     await client.sendMessage(from, { react: { text: '✅', key: m.key } });
