@@ -1,161 +1,221 @@
+const axios = require('axios');
+const {
+  generateWAMessageFromContent,
+  prepareWAMessageMedia,
+  proto
+} = require('@whiskeysockets/baileys');
+
 module.exports = {
-  command: ['play', 'ytaudio', 'musica'],
-  description: 'Busca y descarga audio de YouTube',
+  command: ['play', 'yt', 'audio', 'musica', 'song'],
+  description: 'Busca y descarga musica de YouTube',
   categoria: 'descargas',
 
-  run: async (client, m, args, from, isOwner, ctx = {}) => {
-    const settings = ctx?.settings || {};
-    const axios    = ctx?.axios;
-    const apiBase  = String(settings.apiBaseUrl || '').trim();
-    const apiKey   = String(settings.apiKey || '').trim();
-
-    const firstArg = args[0];
-    const isNumberChoice = /^([1-9]|10)$/.test(firstArg || '');
-
-    if (isNumberChoice) {
-      const index = parseInt(firstArg, 10) - 1;
-      const cache = global.playSearchCache;
-      const cached = cache?.get(from);
-
-      if (!cached) {
-        await client.sendMessage(from, { text: '❌ No hay una búsqueda activa.\n> Usa .play <nombre> primero' }, { quoted: m });
-        return;
-      }
-
-      if (!cached.results[index]) {
-        await client.sendMessage(from, { text: `❌ No existe el resultado #${firstArg}.` }, { quoted: m });
-        return;
-      }
-
-      await descargarYEnviar(client, m, from, cached.results[index], apiBase, apiKey, axios);
-      return;
-    }
-
-    const query = args.join(' ').trim();
+  run: async (client, m, args, from, isCreator, ctx = {}) => {
+    const { prefix } = ctx;
+    const query = args.join(' ');
 
     if (!query) {
-      await client.sendMessage(from, { text: '❌ Escribe el nombre o link de la canción.\n> Ejemplo: .play imagine dragons believer' }, { quoted: m });
-      return;
+      let media = null;
+      try {
+        media = await prepareWAMessageMedia(
+          { image: { url: 'https://files.catbox.moe/8r6m4c.jpg' } },
+          { upload: client.waUploadToServer }
+        );
+      } catch {}
+
+      const interactiveMessage = proto.Message.InteractiveMessage.create({
+        header: {
+          title: 'MANEKI-NEKO',
+          subtitle: 'Descarga musica de YouTube',
+          hasMediaAttachment: !!media,
+          imageMessage: media?.imageMessage
+        },
+        body: {
+          text: `PLAY YOUTUBE\n\nBusca y descarga musica de YouTube\n\nUso: ${prefix}play <nombre o link>\nEjemplo: ${prefix}play TWICE Strategy\n\nPowered by El Vigilante API`
+        },
+        footer: {
+          text: 'Maneki-Neko Bot'
+        },
+        nativeFlowMessage: {
+          buttons: [{
+            name: 'single_select',
+            buttonParamsJson: JSON.stringify({
+              title: 'YOUTUBE',
+              sections: [{
+                title: 'Que deseas hacer',
+                rows: [{
+                  header: 'BUSCAR',
+                  title: 'Buscar musica',
+                  description: 'Escribe el nombre despues del comando',
+                  id: 'ytsearch'
+                }]
+              }]
+            })
+          }]
+        }
+      });
+
+      const msg = generateWAMessageFromContent(
+        from,
+        { viewOnceMessage: { message: { messageContextInfo: {}, interactiveMessage } } },
+        { quoted: m }
+      );
+      return client.relayMessage(from, msg.message, { messageId: msg.key.id });
     }
 
-    if (!apiBase || !apiKey) {
-      await client.sendMessage(from, { text: '❌ La API no está configurada.' }, { quoted: m });
-      return;
+    await client.sendMessage(from, { react: { text: '🔍', key: m.key } });
+
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([^\s&]+)/i;
+    const match = query.match(youtubeRegex);
+
+    if (match) {
+      const videoId = match[1];
+      return downloadAudio(client, m, from, `https://www.youtube.com/watch?v=${videoId}`);
     }
-
-    if (query.toLowerCase() === 'aleatorio' || query.toLowerCase() === 'random') {
-      const cache = global.playSearchCache;
-      const cached = cache?.get(from);
-
-      if (!cached) {
-        await client.sendMessage(from, { text: '❌ No hay una búsqueda activa.\n> Usa .play <nombre> primero' }, { quoted: m });
-        return;
-      }
-
-      const randomIndex = Math.floor(Math.random() * cached.results.length);
-      await descargarYEnviar(client, m, from, cached.results[randomIndex], apiBase, apiKey, axios);
-      return;
-    }
-
-    let results = [];
 
     try {
-      const { data } = await axios.get(`${apiBase}/api/search/youtube`, {
-        params: { apiKey, query },
-        timeout: 15000,
+      const searchRes = await axios.get(`https://api.delirius.store/search/ytsearch?q=${encodeURIComponent(query)}`);
+      if (!searchRes.data.status || !searchRes.data.data.length) {
+        return client.sendMessage(from, { text: 'No se encontraron resultados.' }, { quoted: m });
+      }
+
+      const results = searchRes.data.data.slice(0, 10);
+      let media = null;
+      try {
+        media = await prepareWAMessageMedia(
+          { image: { url: results[0].image || results[0].thumbnail } },
+          { upload: client.waUploadToServer }
+        );
+      } catch {}
+
+      const rows = results.map((v, i) => ({
+        header: String(v.author?.name || 'Desconocido').slice(0, 20),
+        title: String(v.title || '').slice(0, 35),
+        description: `Duracion: ${v.duration || '?'} | Vistas: ${formatViews(v.views)}`,
+        id: `ytplay~${Buffer.from(v.url).toString('base64')}~${Buffer.from(String(v.title || 'audio')).toString('base64')}`
+      }));
+
+      const interactiveMessage = proto.Message.InteractiveMessage.create({
+        header: {
+          title: 'RESULTADOS',
+          subtitle: query.slice(0, 30),
+          hasMediaAttachment: !!media,
+          imageMessage: media?.imageMessage
+        },
+        body: {
+          text: `RESULTADOS\n\nBusqueda: ${query}\n${results.length} resultados encontrados\n\nSelecciona el video que quieras descargar`
+        },
+        footer: {
+          text: 'Maneki-Neko Bot'
+        },
+        nativeFlowMessage: {
+          buttons: [{
+            name: 'single_select',
+            buttonParamsJson: JSON.stringify({
+              title: 'RESULTADOS',
+              sections: [{
+                title: query.toUpperCase().slice(0, 24),
+                rows
+              }]
+            })
+          }]
+        }
       });
-      results = Array.isArray(data?.data) ? data.data.slice(0, 10) : [];
-    } catch {
-      await client.sendMessage(from, { text: '❌ Error al buscar en YouTube.' }, { quoted: m });
-      return;
+
+      const msg = generateWAMessageFromContent(
+        from,
+        { viewOnceMessage: { message: { messageContextInfo: {}, interactiveMessage } } },
+        { quoted: m }
+      );
+      await client.relayMessage(from, msg.message, { messageId: msg.key.id });
+      await client.sendMessage(from, { react: { text: '✅', key: m.key } });
+
+    } catch (e) {
+      await client.sendMessage(from, { react: { text: '❌', key: m.key } });
+      client.sendMessage(from, { text: `Error: ${e.message}` }, { quoted: m });
     }
-
-    if (!results.length) {
-      await client.sendMessage(from, { text: '❌ No se encontraron resultados.' }, { quoted: m });
-      return;
-    }
-
-    global.playSearchCache = global.playSearchCache || new Map();
-    global.playSearchCache.set(from, { results, at: Date.now() });
-    setTimeout(() => {
-      const c = global.playSearchCache?.get(from);
-      if (c && Date.now() - c.at >= 5 * 60 * 1000) global.playSearchCache.delete(from);
-    }, 5 * 60 * 1000);
-
-    const BORDER_TOP    = '╭⊱ ━━━━━━━━━━━━━━━ ⊰╮';
-    const BORDER_BOTTOM = '╰⊱ ━━━━━━━━━━━━━━━ ⊰╯';
-
-    let lista = '';
-    results.forEach((r, i) => {
-      lista += `⊹ ${i + 1}. ${r.title}\n> ${r.duration} ⊹ ${r.views}\n`;
-    });
-
-    const caption =
-`${BORDER_TOP}
-       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ
-${BORDER_BOTTOM}
-
-> Búsqueda: ${query}
-
-『 ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ 』
-
-${lista}
-⊹ Responde con: .play <número>
-⊹ O escribe: .play aleatorio
-
-${BORDER_TOP}
-       🐾 El Vigilante
-${BORDER_BOTTOM}`;
-
-    await client.sendMessage(from, { text: caption }, { quoted: m });
   },
+
+  before: async (client, m, from) => {
+    const nativeFlow = m.message?.interactiveResponseMessage?.nativeFlowResponseMessage;
+    if (!nativeFlow) return false;
+
+    let id;
+    try {
+      const data = JSON.parse(nativeFlow.paramsJson || '{}');
+      id = data.id || data.selectedId || data.selectedRowId || null;
+    } catch { return false; }
+
+    if (!id) return false;
+
+    if (id === 'ytsearch') {
+      await client.sendMessage(from, {
+        text: 'Escribe el nombre de la cancion:\n> .play <nombre>'
+      }, { quoted: m });
+      return true;
+    }
+
+    if (id.startsWith('ytplay~')) {
+      const parts = id.split('~');
+      if (parts.length < 3) return true;
+      const urlB64 = parts[1];
+      const titleB64 = parts[2];
+      let videoUrl, title;
+      try {
+        videoUrl = Buffer.from(urlB64, 'base64').toString();
+        title = Buffer.from(titleB64, 'base64').toString();
+      } catch { return true; }
+
+      await downloadAudio(client, m, from, videoUrl, title);
+      return true;
+    }
+
+    return false;
+  }
 };
 
-async function descargarYEnviar(client, m, from, selected, apiBase, apiKey, axios) {
-  if (!selected?.url) {
-    await client.sendMessage(from, { text: '❌ El resultado no tiene URL válida.' }, { quoted: m });
-    return;
-  }
-
-  await client.sendMessage(from, { text: `🐾 Descargando: ${selected.title}...` }, { quoted: m });
+async function downloadAudio(client, m, from, videoUrl, customTitle) {
+  await client.sendMessage(from, { react: { text: '⏳', key: m.key } });
 
   try {
-    const { data } = await axios.get(`${apiBase}/api/download/ytaudio`, {
-      params: { url: selected.url, apiKey },
-      timeout: 45000,
-    });
+    const downloadRes = await axios.get(`https://api.delirius.store/download/ytmp3?url=${encodeURIComponent(videoUrl)}`);
 
-    const downloadUrl = data?.result?.download_url;
-    const title = data?.result?.title || selected.title || 'audio';
-
-    if (!downloadUrl) {
-      await client.sendMessage(from, { text: '❌ No se pudo obtener la URL de descarga.' }, { quoted: m });
-      return;
+    if (!downloadRes.data.status) {
+      throw new Error('No se pudo descargar el audio');
     }
 
-    const response = await axios.get(downloadUrl, {
-      responseType: 'arraybuffer',
-      timeout: 60000,
-    });
+    const data = downloadRes.data.data;
+    const title = customTitle || data.title || 'audio';
 
-    const audioBuffer = Buffer.from(response.data);
-    const MAX_SIZE = 15 * 1024 * 1024;
-
-    if (audioBuffer.length > MAX_SIZE) {
+    if (data.image) {
       await client.sendMessage(from, {
-        text: `⚠️ El audio pesa ${(audioBuffer.length / 1024 / 1024).toFixed(1)} MB y excede el límite de 15 MB.`
+        image: { url: data.image },
+        caption: `${title}\n\nAutor: ${data.author || 'Desconocido'}\nVistas: ${data.views || '?'}\nLikes: ${data.likes || '?'}\nFormato: ${data.format || 'mp3'}\n\nDescargando audio...`
       }, { quoted: m });
-      return;
     }
 
     await client.sendMessage(from, {
-      audio: audioBuffer,
+      audio: { url: data.download },
       mimetype: 'audio/mpeg',
-      fileName: `${title}.mp3`,
+      fileName: `${title}.mp3`
     }, { quoted: m });
 
-  } catch (error) {
-    console.error('Error al descargar:', error.message);
-    await client.sendMessage(from, { text: '❌ Error al descargar el audio. Intenta con otro resultado.' }, { quoted: m });
+    await client.sendMessage(from, {
+      text: `Descarga completada\n\n${title}\nFormato: ${data.format || 'mp3'}\n\nPowered by Maneki-Neko Bot`
+    }, { quoted: m });
+
+    await client.sendMessage(from, { react: { text: '✅', key: m.key } });
+
+  } catch (e) {
+    await client.sendMessage(from, { react: { text: '❌', key: m.key } });
+    client.sendMessage(from, { text: `Error al descargar: ${e.message}` }, { quoted: m });
   }
+}
+
+function formatViews(num) {
+  if (!num) return '?';
+  if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
 }
