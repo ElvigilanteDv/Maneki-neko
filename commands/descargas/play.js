@@ -1,5 +1,5 @@
 const axios = require('axios');
-const {
+import {
   generateWAMessageFromContent,
   prepareWAMessageMedia,
   proto
