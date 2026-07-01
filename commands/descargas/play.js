@@ -111,29 +111,58 @@ ${BORDER_BOTTOM}`;
   },
 };
 
+// ---------- FUNCIÓN DE DESCARGA MEJORADA ----------
 async function descargarYEnviar(client, m, from, selected, apiBase, apiKey, axios) {
+  // Validar que el resultado tenga URL
+  if (!selected?.url) {
+    await client.sendMessage(from, { text: '❌ El resultado no tiene URL válida.' }, { quoted: m });
+    return;
+  }
+
   await client.sendMessage(from, { text: `🐾 Descargando: ${selected.title}...` }, { quoted: m });
 
   try {
+    // 1. Obtener URL de descarga desde la API
     const { data } = await axios.get(`${apiBase}/api/download/ytaudio`, {
       params: { url: selected.url, apiKey },
-      timeout: 30000,
+      timeout: 45000, // Aumentado a 45s
     });
 
     const downloadUrl = data?.result?.download_url;
-    const title        = data?.result?.title || selected.title;
+    const title = data?.result?.title || selected.title || 'audio';
 
     if (!downloadUrl) {
-      await client.sendMessage(from, { text: '❌ No se pudo obtener el audio.' }, { quoted: m });
+      await client.sendMessage(from, { text: '❌ No se pudo obtener la URL de descarga.' }, { quoted: m });
       return;
     }
 
+    // 2. Descargar el audio como buffer
+    const response = await axios.get(downloadUrl, {
+      responseType: 'arraybuffer',
+      timeout: 60000, // 60s para descargar
+    });
+
+    const audioBuffer = Buffer.from(response.data);
+    const fileSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(1);
+
+    // 3. Verificar tamaño (máximo 15 MB para dejar margen)
+    const MAX_SIZE = 15 * 1024 * 1024;
+    if (audioBuffer.length > MAX_SIZE) {
+      await client.sendMessage(from, {
+        text: `⚠️ El audio pesa *${fileSizeMB} MB* y excede el límite de 15 MB.\nNo puedo enviarlo por WhatsApp.`
+      }, { quoted: m });
+      return;
+    }
+
+    // 4. Enviar el audio como buffer
     await client.sendMessage(from, {
-      audio: { url: downloadUrl },
+      audio: audioBuffer,
       mimetype: 'audio/mpeg',
       fileName: `${title}.mp3`,
     }, { quoted: m });
-  } catch {
-    await client.sendMessage(from, { text: '❌ Error al descargar el audio.' }, { quoted: m });
+
+  } catch (error) {
+    console.error('Error al descargar:', error.message); // Para depuración
+    await client.sendMessage(from, { text: '❌ Error al descargar el audio. Intenta con otro resultado.' }, { quoted: m });
   }
 }
