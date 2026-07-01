@@ -162,7 +162,7 @@ function log(label, msg, color = 'cyan') {
 
 const LABEL_ICONS = {
   SESSION:  '💾', BAILEYS: '⚙️ ', CODE:    '🔑', QR:      '📷',
-  MANEKI:   '🐈', AUTH:    '🔒', CLOSE:   '🔴', RECONECT:'🔄',
+  CMD:      '💬', AUTH:    '🔒', CLOSE:   '🔴', RECONECT:'🔄',
   CONFIG:   '⚙️ ', FATAL:   '💀', ERR:     '❌', INFO:    'ℹ️ ',
   CONNECT:  '🟢', INPUT:   '📝', PAIRING: '🔗',
 };
@@ -1239,6 +1239,40 @@ async function startBot() {
         if (handled) return;
       }
 
+      // ── Selección numérica sin prefijo (para .play, .ytvideo, etc.) ──────────
+      if (/^([1-9]|10)$/.test(body)) {
+        const numCaches = [
+          { cache: global.playSearchCache,    cmd: 'play'    },
+          { cache: global.ytvideoSearchCache, cmd: 'ytvideo' },
+          { cache: global.yt2SearchCache,     cmd: 'yt2'     },
+        ];
+        for (const { cache, cmd } of numCaches) {
+          if (cache?.has(from)) {
+            const cmdObj = global.comandos?.get(cmd);
+            if (cmdObj) {
+              try {
+                await cmdObj.run(sock, m, [body], from, isOwner(sender), {
+                  commandName: cmd,
+                  settings,
+                  saveSettings: (patch = {}) => saveSettings(patch),
+                  prefix:       getPrefixList()[0] || '.',
+                  prefixes:     getPrefixList(),
+                  axios,
+                  isOwner,
+                  ownerNumbers: getOwnerNumbers(),
+                  downloadMediaMessage,
+                  getContentType,
+                });
+              } catch (err) {
+                log('ERR', `${c('bred', cmd + '-sel')}: ${String(err?.message || err).slice(0, 100)}`, 'red');
+              }
+              return;
+            }
+            break;
+          }
+        }
+      }
+
       const usedPrefix  = getUsedPrefix(body);
       if (!usedPrefix) return;
 
@@ -1268,7 +1302,7 @@ async function startBot() {
         return;
       }
 
-      log('MANEKI', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
+      log('CMD', `${cc('bold','bgreen', usedPrefix + commandName)} ${c('dim', `[${place}]`)} ${c('byellow', senderNum)}`, 'cyan');
 
       if (cmd.isOwner && !senderIsOwner) {
         await sock.sendMessage(from, { text: '❌ Solo el owner puede usar este comando.' }, { quoted: m });
