@@ -11,18 +11,17 @@ module.exports = {
 
     if (!query) {
       return client.sendMessage(from, {
-        text: `PLAY YOUTUBE\n\nBusca y descarga musica de YouTube\n\nUso: ${prefix}play <nombre>\nEjemplo: ${prefix}play TWICE Strategy\nLuego usa ${prefix}play <numero> para descargar\n\n➮ Creador: Edward`
+        text: `PLAY YOUTUBE\n\nBusca y descarga musica de YouTube\n\nUso: ${prefix}play <nombre>\nEjemplo: ${prefix}play TWICE Strategy\nLuego usa el número para descargar\n\n➮ Creador: Edward`
       }, { quoted: m });
     }
 
     const num = parseInt(query);
     if (!isNaN(num) && num > 0) {
-      const cacheKey = `ytsearch_${from}`;
-      if (!global.ytCache) global.ytCache = new Map();
-      const cached = global.ytCache.get(cacheKey);
-      
-      if (cached && cached.length >= num) {
-        const selected = cached[num - 1];
+      global.playSearchCache = global.playSearchCache || new Map();
+      const cached = global.playSearchCache.get(from);
+
+      if (cached && cached.results && cached.results.length >= num) {
+        const selected = cached.results[num - 1];
         return downloadAudio(client, m, from, selected.url, selected.title);
       } else {
         return client.sendMessage(from, { 
@@ -48,16 +47,19 @@ module.exports = {
       }
 
       const results = searchRes.data.data.slice(0, 10);
-      
-      if (!global.ytCache) global.ytCache = new Map();
-      global.ytCache.set(`ytsearch_${from}`, results);
-      setTimeout(() => global.ytCache.delete(`ytsearch_${from}`), 60000);
+
+      global.playSearchCache = global.playSearchCache || new Map();
+      global.playSearchCache.set(from, { results, at: Date.now() });
+      setTimeout(() => {
+        const c = global.playSearchCache?.get(from);
+        if (c && Date.now() - c.at >= 5 * 60 * 1000) global.playSearchCache.delete(from);
+      }, 5 * 60 * 1000);
 
       let resultList = `RESULTADOS\n\nBusqueda: ${query}\n${results.length} resultados encontrados\n\n`;
       results.forEach((v, i) => {
         resultList += `${i + 1}. ${v.title}\n`;
         resultList += `   Autor: ${v.author?.name || 'Desconocido'} | Duracion: ${v.duration || '?'}\n`;
-        resultList += `   ➮ Usa ${prefix}play ${i + 1} para descargar\n\n`;
+        resultList += `   ➮ Escribe ${i + 1} para descargar\n\n`;
       });
       resultList += `➮ Creador: Edward`;
 
